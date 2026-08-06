@@ -111,7 +111,7 @@ fn unstage_files(files: Vec<PathBuf>) -> Action {
 }
 
 fn unstageable_files(selection: FileSelection) -> Vec<PathBuf> {
-    selection.staged
+    selection.staged.into_iter().map(|file| file.path).collect()
 }
 
 fn unstage_patch(input: Vec<u8>) -> Action {

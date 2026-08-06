@@ -1,0 +1,26 @@
+---
+source: src/tests/discard.rs
+assertion_line: 55
+expression: ctx.redact_buffer()
+---
+ On branch main                                                                 |
+ Your branch is up to date with 'origin/main'.                                  |
+                                                                                |
+ Untracked files                                                                |
+┃file-a                                                                         |
+▌file-b                                                                         |
+ file-c                                                                         |
+                                                                                |
+ Recent commits                                                                 |
+ b66a0bf main origin/main add initial-file                       Author Name __ |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+────────────────────────────────────────────────────────────────────────────────|
+? Really discard? (y or n) › █                                                  |
+styles_hash: 52977d1f837dcf9a

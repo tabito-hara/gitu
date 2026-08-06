@@ -536,8 +536,8 @@ impl Screen {
                 ItemData::AllUntracked(_) | ItemData::AllUnstaged(_) | ItemData::AllStaged(_) => {}
                 ItemData::Untracked(path) => selection.push_untracked(path.clone()),
                 ItemData::Delta { diff, file_i, .. } => match diff.diff_type {
-                    DiffType::WorkdirToIndex => selection.push_unstaged(delta_path(diff, *file_i)),
-                    DiffType::IndexToTree => selection.push_staged(delta_path(diff, *file_i)),
+                    DiffType::WorkdirToIndex => selection.push_unstaged(diff, *file_i),
+                    DiffType::IndexToTree => selection.push_staged(diff, *file_i),
                     DiffType::TreeToTree => return None,
                 },
                 ItemData::Hunk { .. } | ItemData::HunkLine { .. } => {}
@@ -687,8 +687,13 @@ pub(crate) struct HunkLineSelection {
 #[derive(Default)]
 pub(crate) struct FileSelection {
     pub untracked: Vec<PathBuf>,
-    pub unstaged: Vec<PathBuf>,
-    pub staged: Vec<PathBuf>,
+    pub unstaged: Vec<FileSelectionDiff>,
+    pub staged: Vec<FileSelectionDiff>,
+}
+
+pub(crate) struct FileSelectionDiff {
+    pub path: PathBuf,
+    pub patch: String,
 }
 
 impl FileSelection {
@@ -700,18 +705,28 @@ impl FileSelection {
         push_unique(&mut self.untracked, path);
     }
 
-    fn push_unstaged(&mut self, path: PathBuf) {
-        push_unique(&mut self.unstaged, path);
+    fn push_unstaged(&mut self, diff: &Diff, file_i: usize) {
+        push_unique_diff(&mut self.unstaged, diff, file_i);
     }
 
-    fn push_staged(&mut self, path: PathBuf) {
-        push_unique(&mut self.staged, path);
+    fn push_staged(&mut self, diff: &Diff, file_i: usize) {
+        push_unique_diff(&mut self.staged, diff, file_i);
     }
 }
 
 fn push_unique(paths: &mut Vec<PathBuf>, path: PathBuf) {
     if !paths.contains(&path) {
         paths.push(path);
+    }
+}
+
+fn push_unique_diff(files: &mut Vec<FileSelectionDiff>, diff: &Diff, file_i: usize) {
+    let path = delta_path(diff, file_i);
+    if !files.iter().any(|file| file.path == path) {
+        files.push(FileSelectionDiff {
+            path,
+            patch: diff.format_file_patch(file_i),
+        });
     }
 }
 

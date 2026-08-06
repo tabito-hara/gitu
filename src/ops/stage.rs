@@ -117,7 +117,7 @@ fn stageable_files(selection: FileSelection) -> Vec<PathBuf> {
     selection
         .untracked
         .into_iter()
-        .chain(selection.unstaged)
+        .chain(selection.unstaged.into_iter().map(|file| file.path))
         .collect()
 }
 

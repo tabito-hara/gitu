@@ -37,6 +37,25 @@ pub(crate) fn discard_untracked_file() {
 }
 
 #[test]
+pub(crate) fn discard_selected_untracked_files() {
+    let mut ctx = setup_clone!();
+    run(&ctx.dir, &["touch", "file-a", "file-b", "file-c"]);
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("jj<ctrl+space>jKy"));
+
+    assert_eq!(run(&ctx.dir, &["git", "status", "--short"]), "?? file-c\n");
+}
+
+#[test]
+pub(crate) fn discard_prompt_keeps_selected_range_visible() {
+    let ctx = setup_clone!();
+    run(&ctx.dir, &["touch", "file-a", "file-b", "file-c"]);
+
+    snapshot!(ctx, "jj<ctrl+space>jK");
+}
+
+#[test]
 pub(crate) fn discard_untracked_staged_file() {
     let ctx = setup_clone!();
     run(&ctx.dir, &["touch", "some-file"]);
@@ -56,6 +75,18 @@ pub(crate) fn discard_staged_file_while_unstaged_changes() {
     fs::write(ctx.dir.join("initial-file"), "modified\n").unwrap();
 
     snapshot!(ctx, "jj<tab>jjj<tab>Ky");
+}
+
+#[test]
+pub(crate) fn discard_selected_staged_files() {
+    let mut ctx = setup_clone!();
+    run(&ctx.dir, &["touch", "file-a", "file-b", "file-c"]);
+    run(&ctx.dir, &["git", "add", "file-a", "file-b", "file-c"]);
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("jj<ctrl+space>jKy"));
+
+    assert_eq!(run(&ctx.dir, &["git", "status", "--short"]), "A  file-c\n");
 }
 
 #[test]
@@ -101,6 +132,22 @@ pub(crate) fn discard_unstaged_delta() {
     commit(&ctx.dir, "file-one", "FOO\nBAR\n");
     fs::write(ctx.dir.join("file-one"), "blahonga\n").unwrap();
     snapshot!(ctx, "jjKy");
+}
+
+#[test]
+pub(crate) fn discard_selected_unstaged_files() {
+    let mut ctx = setup_clone!();
+    commit(&ctx.dir, "file-a", "base\n");
+    commit(&ctx.dir, "file-b", "base\n");
+    commit(&ctx.dir, "file-c", "base\n");
+    fs::write(ctx.dir.join("file-a"), "changed\n").unwrap();
+    fs::write(ctx.dir.join("file-b"), "changed\n").unwrap();
+    fs::write(ctx.dir.join("file-c"), "changed\n").unwrap();
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("jj<ctrl+space>jKy"));
+
+    assert_eq!(run(&ctx.dir, &["git", "diff", "--name-only"]), "file-c\n");
 }
 
 #[test]

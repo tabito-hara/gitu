@@ -51,6 +51,17 @@ impl OpTrait for Stage {
     }
 }
 
+pub(crate) struct StageModified;
+impl OpTrait for StageModified {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(stage_unstaged())
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Stage all modified".into()
+    }
+}
+
 fn stage_unstaged() -> Action {
     Rc::new(move |app: &mut App, term: &mut Term| {
         let mut cmd = Command::new("git");

@@ -57,6 +57,17 @@ impl OpTrait for Unstage {
     }
 }
 
+pub(crate) struct UnstageAll;
+impl OpTrait for UnstageAll {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(unstage_staged())
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Unstage all".into()
+    }
+}
+
 fn unstage_staged() -> Action {
     Rc::new(move |app: &mut App, term: &mut Term| {
         let mut cmd = Command::new("git");

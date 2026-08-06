@@ -22,6 +22,16 @@ fn stage_all_unstaged() {
 }
 
 #[test]
+fn stage_modified_from_anywhere() {
+    let ctx = setup_clone!();
+    commit(&ctx.dir, "tracked", "testing\n");
+
+    fs::write(ctx.dir.join("tracked"), "changed\n").unwrap();
+    fs::write(ctx.dir.join("untracked"), "new\n").unwrap();
+    snapshot!(ctx, "S");
+}
+
+#[test]
 fn stage_all_untracked() {
     let ctx = setup_clone!();
     run(&ctx.dir, &["touch", "file-a"]);

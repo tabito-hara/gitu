@@ -9,6 +9,14 @@ fn unstage_all_staged() {
 }
 
 #[test]
+fn unstage_all_from_anywhere() {
+    let ctx = setup_clone!();
+    run(&ctx.dir, &["touch", "one", "two", "unaffected"]);
+    run(&ctx.dir, &["git", "add", "one", "two"]);
+    snapshot!(ctx, "U");
+}
+
+#[test]
 fn unstage_removed_line() {
     let ctx = setup_clone!();
     commit(&ctx.dir, "firstfile", "testing\ntesttest\n");

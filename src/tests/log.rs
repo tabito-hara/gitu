@@ -33,6 +33,44 @@ fn limit_2_commits_other() {
 }
 
 #[test]
+fn multibyte_summary() {
+    let ctx = setup_clone!();
+    commit(
+        &ctx.dir,
+        "multibyte",
+        "日本語のログメッセージが長い場合でも表示幅で切る\n",
+    );
+    run(
+        &ctx.dir,
+        &[
+            "git",
+            "commit",
+            "--amend",
+            "-m",
+            "日本語のログメッセージが長い場合でも右端の表示を壊さない",
+        ],
+    );
+
+    snapshot!(ctx, "ll");
+}
+
+#[test]
+fn narrow_recent_commits_marks_truncated_multibyte_summary() {
+    let ctx = setup_clone_narrow!();
+    commit(&ctx.dir, "multibyte", "微修正\n");
+    run(
+        &ctx.dir,
+        &["git", "commit", "--amend", "-m", "微修正更新追加"],
+    );
+    run(
+        &ctx.dir,
+        &["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
+    );
+
+    snapshot!(ctx, "");
+}
+
+#[test]
 fn grep_prompt() {
     snapshot!(setup(setup_clone!()), "l-F");
 }

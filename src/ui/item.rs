@@ -8,7 +8,7 @@ use crate::highlight;
 use crate::item_data::{ItemData, Ref, SectionHeader};
 use crate::items::Item;
 use crate::ui::layout::opts;
-use crate::ui::{UiTree, layout_span};
+use crate::ui::{UiTree, layout_span, layout_span_nowrap};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
@@ -78,14 +78,14 @@ pub(crate) fn layout_item<'a>(
                 ),
             );
 
-            layout.row(opts().fill_x(), |layout| {
+            layout.row(opts().fill_x().no_wrap(), |layout| {
                 for reference in associated_references {
                     layout_span(layout, (" ".into(), base));
                     layout_reference(layout, reference, config, base);
                 }
 
                 layout_span(layout, (" ".into(), base));
-                layout_span(layout, (summary.as_str().into(), base));
+                layout_span_nowrap(layout, (summary.as_str().into(), base));
             });
 
             layout_span(layout, (" ".into(), base));

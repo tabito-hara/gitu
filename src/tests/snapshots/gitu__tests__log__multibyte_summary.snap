@@ -1,0 +1,26 @@
+---
+source: src/tests/log.rs
+assertion_line: 54
+expression: ctx.redact_buffer()
+---
+▌70a8c3c main 日本語のログメッセージが長い場合でも右端の表示を…  Author Name 2y // hidden by multi-width symbols: [(15, " "), (17, " "), (19, " "), (21, " "), (23, " "), (25, " "), (27, " "), (29, " "), (31, " "), (33, " "), (35, " "), (37, " "), (39, " "), (41, " "), (43, " "), (45, " "), (47, " "), (49, " "), (51, " "), (53, " "), (55, " "), (57, " "), (59, " "), (61, " ")]|
+ b66a0bf origin/main add initial-file                            Author Name __ |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+styles_hash: 3b3f201fd2de4e93

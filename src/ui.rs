@@ -168,6 +168,10 @@ pub(crate) fn layout_span<'a>(layout: &mut UiTree<'a>, span: (Cow<'a, str>, Styl
     }
 }
 
+pub(crate) fn layout_span_nowrap<'a>(layout: &mut UiTree<'a>, span: (Cow<'a, str>, Style)) {
+    layout.leaf(Span(span.0, span.1));
+}
+
 /// Splits into the words to wrap on, dropping line breaks. A span occupies a
 /// single row, so a line break would otherwise be printed as-is and shift the
 /// rest of the frame.
@@ -208,31 +212,83 @@ fn clear_blanks(
     let mut at = [0, 0];
     let mut bg = Style::new();
     let mut bg_end = 0;
-    for item in items {
+    for item_i in 0..items.len() {
+        let item = &items[item_i];
         let LayoutItem {
             data,
             pos,
             size: item_size,
         } = item;
+        let next_leaf_x = items
+            .iter()
+            .find(|next| {
+                matches!(next.data, Payload::Leaf(_))
+                    && next.pos[1] == pos[1]
+                    && next.pos[0] > pos[0]
+            })
+            .map(|next| next.pos[0]);
 
         blank_until(term, &mut at, [0, pos[1]], size.0, bg, bg_end)?;
 
         match data {
             Payload::Leaf(Span(text, style)) => {
-                blank_until(term, &mut at, pos, size.0, bg, bg_end)?;
-                term.queue_move_cursor(pos[0], pos[1])?;
-                term.queue_print(text, style)?;
+                let effective_width = next_leaf_x
+                    .map(|next_x| next_x.saturating_sub(pos[0]))
+                    .unwrap_or_else(|| size.0.saturating_sub(pos[0]))
+                    .min(item_size[0]);
 
-                at[0] = pos[0].saturating_add(item_size[0]);
+                blank_until(term, &mut at, *pos, size.0, bg, bg_end)?;
+                term.queue_move_cursor(pos[0], pos[1])?;
+                let fitted = fit_to_width(text, effective_width);
+                term.queue_print(&fitted, style)?;
+                queue_blanks(
+                    term,
+                    [
+                        pos[0].saturating_add(UnicodeWidthStr::width(fitted.as_ref()) as u16),
+                        pos[1],
+                    ],
+                    effective_width.saturating_sub(UnicodeWidthStr::width(fitted.as_ref()) as u16),
+                    style,
+                )?;
+
+                at[0] = pos[0].saturating_add(effective_width);
             }
             Payload::Container(style) => {
-                bg = *style;
+                bg = **style;
                 bg_end = pos[1].saturating_add(item_size[1]);
             }
         }
     }
     blank_until(term, &mut at, [0, size.1], size.0, bg, bg_end)?;
     Ok(())
+}
+
+fn fit_to_width(text: &str, width: u16) -> Cow<'_, str> {
+    let width = width as usize;
+    if UnicodeWidthStr::width(text) <= width {
+        return Cow::Borrowed(text);
+    }
+
+    if width == 0 {
+        return Cow::Borrowed("");
+    }
+
+    let mut fitted = String::new();
+    let mut taken = 0;
+
+    for grapheme in text.graphemes(true) {
+        let grapheme_width = grapheme.width();
+
+        if taken + grapheme_width > width - 1 {
+            break;
+        }
+
+        fitted.push_str(grapheme);
+        taken += grapheme_width;
+    }
+
+    fitted.push('…');
+    Cow::Owned(fitted)
 }
 
 fn blank_until(
@@ -271,4 +327,25 @@ fn queue_blanks(term: &mut TermBackend, at: [u16; 2], width: u16, style: &Style)
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use unicode_width::UnicodeWidthStr;
+
+    #[test]
+    fn fit_to_width_respects_multibyte_display_width() {
+        let fitted = fit_to_width("日本語abcdef", 7);
+
+        assert_eq!(fitted, "日本語…");
+        assert_eq!(UnicodeWidthStr::width(fitted.as_ref()), 7);
+    }
+
+    #[test]
+    fn fit_to_width_marks_too_wide_first_grapheme() {
+        let fitted = fit_to_width("日", 1);
+
+        assert_eq!(fitted, "…");
+    }
 }

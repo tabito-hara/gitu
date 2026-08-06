@@ -45,9 +45,18 @@ macro_rules! setup_clone_wide {
     () => {{ TestContext::setup_clone_wide(function_name!()) }};
 }
 
+#[macro_export]
+macro_rules! setup_clone_narrow {
+    () => {{ TestContext::setup_clone_narrow(function_name!()) }};
+}
+
 impl TestContext {
     pub fn setup_clone(test_name: &str) -> Self {
         Self::setup_clone_sized(test_name, (80, 20))
+    }
+
+    pub fn setup_clone_narrow(test_name: &str) -> Self {
+        Self::setup_clone_sized(test_name, (50, 20))
     }
 
     /// For tests whose output carries the remote's path. At 80 columns that

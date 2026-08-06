@@ -106,8 +106,10 @@ pub struct StyleConfig {
 
     pub cursor: SymbolStyleConfigEntry,
     pub selection_bar: SymbolStyleConfigEntry,
+    pub mark_bar: SymbolStyleConfigEntry,
     pub selection_line: StyleConfigEntry,
     pub selection_area: StyleConfigEntry,
+    pub mark_area: StyleConfigEntry,
 
     pub hash: StyleConfigEntry,
     pub branch: StyleConfigEntry,

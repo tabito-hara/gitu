@@ -1,4 +1,5 @@
 use crate::config::StyleConfig;
+use crate::git::diff::{Diff, DiffType};
 use crate::style::Style;
 use crate::ui::layout::{LayoutTree, opts};
 use crate::ui::{UiTree, layout_span};
@@ -10,6 +11,9 @@ use crate::{Res, config::Config, items::hash};
 use super::Item;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::ops::Range;
+use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 
 pub(crate) mod blame;
@@ -31,6 +35,7 @@ pub(crate) enum NavMode {
 pub(crate) struct Screen {
     pub(crate) size: (u16, u16),
     cursor: usize,
+    mark: Option<usize>,
     scroll: usize,
     config: Arc<Config>,
     refresh_items: Box<dyn Fn() -> Res<Vec<Item>>>,
@@ -61,6 +66,7 @@ impl Screen {
 
         let mut screen = Self {
             cursor: 0,
+            mark: None,
             scroll: 0,
             size,
             config,
@@ -253,8 +259,19 @@ impl Screen {
         }
 
         self.clamp_cursor();
+        self.clamp_mark();
         let nav_mode = self.selected_item_nav_mode();
         self.move_from_unselectable(nav_mode);
+    }
+
+    fn clamp_mark(&mut self) {
+        if let Some(mark) = &mut self.mark {
+            if self.items.is_empty() {
+                self.mark = None;
+            } else {
+                *mark = (*mark).min(self.items.len() - 1);
+            }
+        }
     }
 
     fn selected_item_nav_mode(&mut self) -> NavMode {
@@ -305,7 +322,8 @@ impl Screen {
                 let mut layout = LayoutTree::new();
                 let view = ItemView {
                     item_index,
-                    highlighted: false,
+                    cursor_highlighted: false,
+                    marked: false,
                 };
                 layout_item(&mut layout, self, false, view);
 
@@ -344,7 +362,9 @@ impl Screen {
     }
 
     fn is_cursor_off_screen(&self) -> bool {
-        !self.item_views(self.size).any(|item| item.highlighted)
+        !self
+            .item_views(self.size)
+            .any(|item| item.cursor_highlighted)
     }
 
     fn move_cursor_to_screen_center(&mut self) {
@@ -437,6 +457,101 @@ impl Screen {
         &self.items[self.cursor]
     }
 
+    pub(crate) fn set_mark(&mut self) {
+        self.mark = Some(self.cursor);
+    }
+
+    pub(crate) fn clear_mark(&mut self) {
+        self.mark = None;
+    }
+
+    pub(crate) fn selected_hunk_line_range(&self) -> Option<HunkLineSelection> {
+        let mark = self.mark?;
+        let start = mark.min(self.cursor);
+        let end = mark.max(self.cursor);
+
+        let mut diff = None;
+        let mut file_i = None;
+        let mut hunk_i = None;
+        let mut line_start = usize::MAX;
+        let mut line_end = 0;
+
+        for item in &self.items[start..=end] {
+            let ItemData::HunkLine {
+                diff: item_diff,
+                file_i: item_file_i,
+                hunk_i: item_hunk_i,
+                line_i,
+                ..
+            } = &item.data
+            else {
+                return None;
+            };
+
+            if let Some(diff) = &diff {
+                if !Rc::ptr_eq(diff, item_diff) {
+                    return None;
+                }
+            } else {
+                diff = Some(Rc::clone(item_diff));
+            }
+
+            if let Some(file_i) = file_i {
+                if file_i != *item_file_i {
+                    return None;
+                }
+            } else {
+                file_i = Some(*item_file_i);
+            }
+
+            if let Some(hunk_i) = hunk_i {
+                if hunk_i != *item_hunk_i {
+                    return None;
+                }
+            } else {
+                hunk_i = Some(*item_hunk_i);
+            }
+
+            line_start = line_start.min(*line_i);
+            line_end = line_end.max(*line_i + 1);
+        }
+
+        Some(HunkLineSelection {
+            diff: diff?,
+            file_i: file_i?,
+            hunk_i: hunk_i?,
+            line_range: line_start..line_end,
+        })
+    }
+
+    pub(crate) fn selected_file_range(&self) -> Option<FileSelection> {
+        let mark = self.mark?;
+        let start = mark.min(self.cursor);
+        let end = mark.max(self.cursor);
+        let mut selection = FileSelection::default();
+
+        for item in &self.items[start..=end] {
+            match &item.data {
+                ItemData::Raw(content) if content.is_empty() => {}
+                ItemData::AllUntracked(_) | ItemData::AllUnstaged(_) | ItemData::AllStaged(_) => {}
+                ItemData::Untracked(path) => selection.push_untracked(path.clone()),
+                ItemData::Delta { diff, file_i, .. } => match diff.diff_type {
+                    DiffType::WorkdirToIndex => selection.push_unstaged(delta_path(diff, *file_i)),
+                    DiffType::IndexToTree => selection.push_staged(delta_path(diff, *file_i)),
+                    DiffType::TreeToTree => return None,
+                },
+                ItemData::Hunk { .. } | ItemData::HunkLine { .. } => {}
+                _ => return None,
+            }
+        }
+
+        if selection.is_empty() {
+            None
+        } else {
+            Some(selection)
+        }
+    }
+
     pub(crate) fn select_matching<F: Fn(&ItemData) -> bool>(&mut self, predicate: F) -> bool {
         if let Some(item_i) = self.find_item(|item| !item.unselectable && predicate(&item.data)) {
             self.cursor = item_i;
@@ -507,6 +622,9 @@ impl Screen {
     }
 
     fn item_views(&'_ self, area: (u16, u16)) -> impl Iterator<Item = ItemView> {
+        let marked_range = self
+            .mark
+            .map(|mark| mark.min(self.cursor)..=mark.max(self.cursor));
         let first_visible_item = self
             .line_index
             .get(self.scroll)
@@ -530,15 +648,23 @@ impl Screen {
         self.filter_collapsed_items(&self.items[scan_highlight_range])
             .scan(None, move |highlight_depth, (offset_item_index, item)| {
                 let item_index = scan_start_item + offset_item_index;
+                let cursor_highlighted;
                 if self.cursor == item_index {
                     *highlight_depth = Some(item.depth);
+                    cursor_highlighted = true;
                 } else if highlight_depth.is_some_and(|s| s >= item.depth) {
                     *highlight_depth = None;
+                    cursor_highlighted = false;
+                } else {
+                    cursor_highlighted = highlight_depth.is_some();
                 };
 
                 Some(ItemView {
                     item_index,
-                    highlighted: highlight_depth.is_some(),
+                    cursor_highlighted,
+                    marked: marked_range
+                        .as_ref()
+                        .is_some_and(|range| range.contains(&item_index)),
                 })
             })
             .skip(context_offset)
@@ -547,7 +673,56 @@ impl Screen {
 
 struct ItemView {
     item_index: usize,
-    highlighted: bool,
+    cursor_highlighted: bool,
+    marked: bool,
+}
+
+pub(crate) struct HunkLineSelection {
+    pub diff: Rc<Diff>,
+    pub file_i: usize,
+    pub hunk_i: usize,
+    pub line_range: Range<usize>,
+}
+
+#[derive(Default)]
+pub(crate) struct FileSelection {
+    pub untracked: Vec<PathBuf>,
+    pub unstaged: Vec<PathBuf>,
+    pub staged: Vec<PathBuf>,
+}
+
+impl FileSelection {
+    fn is_empty(&self) -> bool {
+        self.untracked.is_empty() && self.unstaged.is_empty() && self.staged.is_empty()
+    }
+
+    fn push_untracked(&mut self, path: PathBuf) {
+        push_unique(&mut self.untracked, path);
+    }
+
+    fn push_unstaged(&mut self, path: PathBuf) {
+        push_unique(&mut self.unstaged, path);
+    }
+
+    fn push_staged(&mut self, path: PathBuf) {
+        push_unique(&mut self.staged, path);
+    }
+}
+
+fn push_unique(paths: &mut Vec<PathBuf>, path: PathBuf) {
+    if !paths.contains(&path) {
+        paths.push(path);
+    }
+}
+
+fn delta_path(diff: &Diff, file_i: usize) -> PathBuf {
+    let diff_header = &diff.file_diffs[file_i].header;
+    let file_path = match diff_header.status {
+        crate::gitu_diff::Status::Deleted => &diff_header.old_file,
+        _ => &diff_header.new_file,
+    };
+
+    file_path.fmt(&diff.text).into_owned().into()
 }
 
 pub(crate) fn layout_screen<'a>(layout: &mut UiTree<'a>, screen: &'a Screen, hide_cursor: bool) {
@@ -567,8 +742,8 @@ fn layout_item<'a>(layout: &mut UiTree<'a>, screen: &'a Screen, hide_cursor: boo
     let bg = area_sel.patch(line_sel);
 
     layout.row_with(bg, opts().fill_x(), |layout| {
-        let gutter_char = if !hide_cursor && line.highlighted {
-            gutter_char(style, is_line_sel, bg)
+        let gutter_char = if !hide_cursor && line.is_highlighted() {
+            gutter_char(style, &line, is_line_sel, bg)
         } else {
             (" ".into(), Style::new())
         };
@@ -585,11 +760,21 @@ fn layout_item<'a>(layout: &mut UiTree<'a>, screen: &'a Screen, hide_cursor: boo
     });
 }
 
-fn gutter_char<'a>(style: &'a StyleConfig, is_line_sel: bool, bg: Style) -> (Cow<'a, str>, Style) {
+fn gutter_char<'a>(
+    style: &'a StyleConfig,
+    line: &ItemView,
+    is_line_sel: bool,
+    bg: Style,
+) -> (Cow<'a, str>, Style) {
     if is_line_sel {
         (
             style.cursor.symbol.to_string().into(),
             bg.patch(Style::from(&style.cursor)),
+        )
+    } else if line.marked {
+        (
+            style.mark_bar.symbol.to_string().into(),
+            bg.patch(Style::from(&style.mark_bar)),
         )
     } else {
         (
@@ -600,7 +785,7 @@ fn gutter_char<'a>(style: &'a StyleConfig, is_line_sel: bool, bg: Style) -> (Cow
 }
 
 fn line_selection_highlight(style: &StyleConfig, line: &ItemView, selected_line: bool) -> Style {
-    if line.highlighted && selected_line {
+    if line.is_highlighted() && selected_line {
         Style::from(&style.selection_line)
     } else {
         Style::new()
@@ -608,10 +793,18 @@ fn line_selection_highlight(style: &StyleConfig, line: &ItemView, selected_line:
 }
 
 fn area_selection_highlight(style: &StyleConfig, line: &ItemView) -> Style {
-    if line.highlighted {
+    if line.marked {
+        Style::from(&style.mark_area)
+    } else if line.cursor_highlighted {
         Style::from(&style.selection_area)
     } else {
         Style::new()
+    }
+}
+
+impl ItemView {
+    fn is_highlighted(&self) -> bool {
+        self.cursor_highlighted || self.marked
     }
 }
 

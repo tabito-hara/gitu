@@ -19,8 +19,8 @@ expression: ctx.redact_buffer()
  G                Bottom                  V   Revert                            |
  ctrl+u           Scroll half page up     A   Cherry-pick                       |
  ctrl+d           Scroll half page down   z   Stash                             |
- ctrl+y           Scroll view up                                                |
- ctrl+e           Scroll view down                                              |
+ ctrl+space       Set mark                                                      |
+ ctrl+g           Clear mark                                                    |
  g+r              Refresh                                                       |
  q/esc            Quit/Close                                                    |
-styles_hash: 26c6336acb62d123
+styles_hash: 147baf2dd84118a4

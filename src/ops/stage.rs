@@ -5,41 +5,34 @@ use crate::{
     git::diff::{Diff, PatchMode},
     gitu_diff::Status,
     item_data::ItemData,
+    screen::{FileSelection, HunkLineSelection},
     term::Term,
 };
-use std::{ffi::OsString, process::Command, rc::Rc};
+use std::{path::PathBuf, process::Command, rc::Rc};
 
 pub(crate) struct Stage;
 impl OpTrait for Stage {
     fn get_action(&self, target: &ItemData) -> Option<Action> {
-        let action = match target {
-            ItemData::AllUnstaged(_) => stage_unstaged(),
-            ItemData::AllUntracked(untracked) => stage_untracked(untracked.clone()),
-            ItemData::Untracked(u) => stage_file(u.into()),
-            ItemData::Delta { diff, file_i, .. } => {
-                let diff_header = &diff.file_diffs[*file_i].header;
-                let file_path = match diff_header.status {
-                    Status::Deleted => &diff_header.old_file,
-                    _ => &diff_header.new_file,
-                };
-                stage_file(file_path.fmt(&diff.text).into_owned().into())
-            }
-            ItemData::Hunk {
-                diff,
-                file_i,
-                hunk_i,
-            } => stage_patch(Rc::clone(diff), *file_i, *hunk_i),
-            ItemData::HunkLine {
-                diff,
-                file_i,
-                hunk_i,
-                line_i,
-                ..
-            } => stage_line(Rc::clone(diff), *file_i, *hunk_i, *line_i),
-            _ => return None,
-        };
+        let target = target.clone();
+        target_stage_action(&target).map(|mut target_action| {
+            Rc::new(move |app: &mut App, term: &mut Term| {
+                if let Some(selection) = app.screen().selected_hunk_line_range() {
+                    app.screen_mut().clear_mark();
+                    let mut action = stage_line_range(selection);
+                    return Rc::get_mut(&mut action).unwrap()(app, term);
+                }
+                if let Some(selection) = app.screen().selected_file_range() {
+                    let paths = stageable_files(selection);
+                    if !paths.is_empty() {
+                        app.screen_mut().clear_mark();
+                        let mut action = stage_files(paths);
+                        return Rc::get_mut(&mut action).unwrap()(app, term);
+                    }
+                }
 
-        Some(action)
+                Rc::get_mut(&mut target_action).unwrap()(app, term)
+            }) as Action
+        })
     }
 
     fn is_target_op(&self) -> bool {
@@ -49,6 +42,37 @@ impl OpTrait for Stage {
     fn display(&self, _state: &State) -> String {
         "Stage".into()
     }
+}
+
+fn target_stage_action(target: &ItemData) -> Option<Action> {
+    let action = match target {
+        ItemData::AllUnstaged(_) => stage_unstaged(),
+        ItemData::AllUntracked(untracked) => stage_untracked(untracked.clone()),
+        ItemData::Untracked(u) => stage_file(u.into()),
+        ItemData::Delta { diff, file_i, .. } => {
+            let diff_header = &diff.file_diffs[*file_i].header;
+            let file_path = match diff_header.status {
+                Status::Deleted => &diff_header.old_file,
+                _ => &diff_header.new_file,
+            };
+            stage_file(file_path.fmt(&diff.text).into_owned().into())
+        }
+        ItemData::Hunk {
+            diff,
+            file_i,
+            hunk_i,
+        } => stage_patch(Rc::clone(diff), *file_i, *hunk_i),
+        ItemData::HunkLine {
+            diff,
+            file_i,
+            hunk_i,
+            line_i,
+            ..
+        } => stage_line(Rc::clone(diff), *file_i, *hunk_i, *line_i),
+        _ => return None,
+    };
+
+    Some(action)
 }
 
 pub(crate) struct StageModified;
@@ -72,23 +96,29 @@ fn stage_unstaged() -> Action {
 }
 
 fn stage_untracked(untracked: Vec<std::path::PathBuf>) -> Action {
+    stage_files(untracked)
+}
+
+fn stage_file(file: PathBuf) -> Action {
+    stage_files(vec![file])
+}
+
+fn stage_files(files: Vec<PathBuf>) -> Action {
     Rc::new(move |app: &mut App, term: &mut Term| {
         let mut cmd = Command::new("git");
         cmd.arg("add");
-        cmd.args(untracked.clone());
+        cmd.args(files.clone());
 
         app.run_cmd(term, &[], cmd)
     })
 }
 
-fn stage_file(file: OsString) -> Action {
-    Rc::new(move |app, term| {
-        let mut cmd = Command::new("git");
-        cmd.args(["add"]);
-        cmd.arg(&file);
-
-        app.run_cmd(term, &[], cmd)
-    })
+fn stageable_files(selection: FileSelection) -> Vec<PathBuf> {
+    selection
+        .untracked
+        .into_iter()
+        .chain(selection.unstaged)
+        .collect()
 }
 
 fn stage_patch(diff: Rc<Diff>, file_i: usize, hunk_i: usize) -> Action {
@@ -110,6 +140,25 @@ fn stage_line(diff: Rc<Diff>, file_i: usize, hunk_i: usize, line_i: usize) -> Ac
 
         let input = diff
             .format_line_patch(file_i, hunk_i, line_i..(line_i + 1), PatchMode::Normal)
+            .into_bytes();
+
+        app.run_cmd(term, &input, cmd)
+    })
+}
+
+fn stage_line_range(selection: HunkLineSelection) -> Action {
+    Rc::new(move |app, term| {
+        let mut cmd = Command::new("git");
+        cmd.args(["apply", "--cached", "--recount"]);
+
+        let input = selection
+            .diff
+            .format_line_patch(
+                selection.file_i,
+                selection.hunk_i,
+                selection.line_range.clone(),
+                PatchMode::Normal,
+            )
             .into_bytes();
 
         app.run_cmd(term, &input, cmd)

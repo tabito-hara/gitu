@@ -127,11 +127,13 @@ pub(crate) enum Op {
     MoveBottom,
     HalfPageUp,
     HalfPageDown,
-    ScrollViewUp,
-    ScrollViewDown,
+    SetMark,
+    ClearMark,
 
     Refresh,
     Quit,
+    ScrollViewUp,
+    ScrollViewDown,
 
     #[serde(untagged)]
     OpenMenu(Menu),
@@ -163,6 +165,8 @@ impl Op {
             Op::MoveBottom => Box::new(editor::MoveBottom),
             Op::ScrollViewUp => Box::new(editor::ScrollViewUp),
             Op::ScrollViewDown => Box::new(editor::ScrollViewDown),
+            Op::SetMark => Box::new(editor::SetMark),
+            Op::ClearMark => Box::new(editor::ClearMark),
             Op::Checkout => Box::new(branch::Checkout),
             Op::CheckoutNewBranch => Box::new(branch::CheckoutNewBranch),
             Op::Spinoff => Box::new(branch::Spinoff),

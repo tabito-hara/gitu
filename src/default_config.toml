@@ -91,10 +91,12 @@ picker.matched = { fg = "yellow", mods = "BOLD" }
 
 cursor = { symbol = "▌", fg = "blue" }
 selection_bar = { symbol = "▌", fg = "blue", mods = "DIM" }
+mark_bar = { symbol = "┃", fg = "light yellow", mods = "BOLD" }
 selection_line = { mods = "BOLD" }
 # You may want to set `selection_area.bg` to a nice background color.
 # Looks horrible with regular terminal colors, so is therefore not set.
 selection_area = {}
+mark_area = { bg = "dark gray" }
 
 hash = { fg = "yellow" }
 branch = { fg = "green" }
@@ -123,6 +125,8 @@ root.move_top = ["g+g"]
 root.move_bottom = ["G"]
 root.scroll_view_up = ["ctrl+y"]
 root.scroll_view_down = ["ctrl+e"]
+root.set_mark = ["ctrl+space"]
+root.clear_mark = ["ctrl+g"]
 root.show_refs = ["Y"]
 root.show = ["enter"]
 root.discard = ["K"]

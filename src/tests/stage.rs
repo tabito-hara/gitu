@@ -40,6 +40,21 @@ fn stage_all_untracked() {
 }
 
 #[test]
+fn stage_selected_untracked_files() {
+    let mut ctx = setup_clone!();
+    run(&ctx.dir, &["touch", "file-a", "file-b", "file-c"]);
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("jj<ctrl+space>js"));
+
+    assert_eq!(
+        run(&ctx.dir, &["git", "diff", "--cached", "--name-only"]),
+        "file-a\nfile-b\n"
+    );
+    assert!(run(&ctx.dir, &["git", "status", "--short"]).contains("?? file-c"));
+}
+
+#[test]
 fn stage_removed_line() {
     let ctx = setup_clone!();
     commit(&ctx.dir, "firstfile", "testing\ntesttest\n");
@@ -54,6 +69,72 @@ fn stage_added_line() {
     fs::write(ctx.dir.join("firstfile"), "weehooo\nblrergh\n").unwrap();
 
     snapshot!(ctx, "jj<tab><ctrl+j><ctrl+j><ctrl+j><ctrl+j>s");
+}
+
+#[test]
+fn stage_selected_lines() {
+    let mut ctx = setup_clone!();
+    commit(&ctx.dir, "firstfile", "testing\ntesttest\n");
+    fs::write(ctx.dir.join("firstfile"), "weehooo\nblrergh\n").unwrap();
+
+    let mut app = ctx.init_app();
+    ctx.update(
+        &mut app,
+        keys("jj<tab><ctrl+j><ctrl+j><ctrl+j><ctrl+j><ctrl+space><ctrl+j>s"),
+    );
+
+    let cached = run(&ctx.dir, &["git", "diff", "--cached", "--", "firstfile"]);
+    assert!(cached.contains("+weehooo\n+blrergh\n"));
+    assert!(!cached.contains("-testing\n-testtest\n"));
+
+    let unstaged = run(&ctx.dir, &["git", "diff", "--", "firstfile"]);
+    assert!(unstaged.contains("-testing\n-testtest\n"));
+    assert!(!unstaged.contains("+weehooo\n+blrergh\n"));
+}
+
+#[test]
+fn stage_selected_unstaged_files() {
+    let mut ctx = setup_clone!();
+    commit(&ctx.dir, "file-a", "base\n");
+    commit(&ctx.dir, "file-b", "base\n");
+    commit(&ctx.dir, "file-c", "base\n");
+    fs::write(ctx.dir.join("file-a"), "changed\n").unwrap();
+    fs::write(ctx.dir.join("file-b"), "changed\n").unwrap();
+    fs::write(ctx.dir.join("file-c"), "changed\n").unwrap();
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("jj<ctrl+space>js"));
+
+    assert_eq!(
+        run(&ctx.dir, &["git", "diff", "--cached", "--name-only"]),
+        "file-a\nfile-b\n"
+    );
+    assert_eq!(run(&ctx.dir, &["git", "diff", "--name-only"]), "file-c\n");
+}
+
+#[test]
+fn marked_unstaged_files_are_visually_distinct() {
+    let ctx = setup_clone!();
+    commit(&ctx.dir, "file-a", "base\n");
+    commit(&ctx.dir, "file-b", "base\n");
+    commit(&ctx.dir, "file-c", "base\n");
+    fs::write(ctx.dir.join("file-a"), "changed\n").unwrap();
+    fs::write(ctx.dir.join("file-b"), "changed\n").unwrap();
+    fs::write(ctx.dir.join("file-c"), "changed\n").unwrap();
+
+    snapshot!(ctx, "jj<ctrl+space>j");
+}
+
+#[test]
+fn marked_lines_are_visually_distinct() {
+    let ctx = setup_clone!();
+    commit(&ctx.dir, "firstfile", "testing\ntesttest\n");
+    fs::write(ctx.dir.join("firstfile"), "weehooo\nblrergh\n").unwrap();
+
+    snapshot!(
+        ctx,
+        "jj<tab><ctrl+j><ctrl+j><ctrl+j><ctrl+j><ctrl+space><ctrl+j>"
+    );
 }
 
 #[test]

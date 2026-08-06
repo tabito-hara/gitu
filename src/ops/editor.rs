@@ -226,6 +226,34 @@ impl OpTrait for MoveToScreenLine {
     }
 }
 
+pub(crate) struct SetMark;
+impl OpTrait for SetMark {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, _term| {
+            app.screen_mut().set_mark();
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Set mark".into()
+    }
+}
+
+pub(crate) struct ClearMark;
+impl OpTrait for ClearMark {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, _term| {
+            app.screen_mut().clear_mark();
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Clear mark".into()
+    }
+}
+
 pub(crate) struct MoveNextSection;
 impl OpTrait for MoveNextSection {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {

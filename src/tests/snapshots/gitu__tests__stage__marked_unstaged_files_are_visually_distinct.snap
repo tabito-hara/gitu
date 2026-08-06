@@ -1,0 +1,26 @@
+---
+source: src/tests/stage.rs
+assertion_line: 128
+expression: ctx.redact_buffer()
+---
+ On branch main                                                                 |
+ Your branch is ahead of 'origin/main' by 3 commit(s).                          |
+                                                                                |
+ Unstaged changes (3)                                                           |
+┃modified   file-a…                                                             |
+▌modified   file-b…                                                             |
+ modified   file-c…                                                             |
+                                                                                |
+ Recent commits                                                                 |
+ 0373edb main add file-c                                         Author Name __ |
+ 860d64c add file-b                                              Author Name __ |
+ 0d96aa2 add file-a                                              Author Name __ |
+ b66a0bf origin/main add initial-file                            Author Name __ |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+styles_hash: 5da28caa72614e51

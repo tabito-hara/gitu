@@ -126,6 +126,29 @@ fn marked_unstaged_files_are_visually_distinct() {
 }
 
 #[test]
+fn clear_mark_cancels_selected_files() {
+    let mut ctx = setup_clone!();
+    commit(&ctx.dir, "file-a", "base\n");
+    commit(&ctx.dir, "file-b", "base\n");
+    commit(&ctx.dir, "file-c", "base\n");
+    fs::write(ctx.dir.join("file-a"), "changed\n").unwrap();
+    fs::write(ctx.dir.join("file-b"), "changed\n").unwrap();
+    fs::write(ctx.dir.join("file-c"), "changed\n").unwrap();
+    let mut app = ctx.init_app();
+
+    ctx.update(&mut app, keys("jj<ctrl+space>j<ctrl+g>s"));
+
+    assert_eq!(
+        run(&ctx.dir, &["git", "diff", "--cached", "--name-only"]),
+        "file-b\n"
+    );
+    assert_eq!(
+        run(&ctx.dir, &["git", "diff", "--name-only"]),
+        "file-a\nfile-c\n"
+    );
+}
+
+#[test]
 fn marked_lines_are_visually_distinct() {
     let ctx = setup_clone!();
     commit(&ctx.dir, "firstfile", "testing\ntesttest\n");

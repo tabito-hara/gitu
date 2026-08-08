@@ -78,3 +78,5 @@ imara-diff = { version = "0.2.0", default-features = false }
 fuzzy-matcher = "0.3.7"
 unicode-width = "0.2.0"
 url = "2.5.7"
+ureq = { version = "2.12.1", features = ["json"] }
+serde_json = "1.0.145"

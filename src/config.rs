@@ -15,6 +15,7 @@ const DEFAULT_CONFIG: &str = include_str!("default_config.toml");
 pub struct Config {
     pub general: GeneralConfig,
     pub style: StyleConfig,
+    pub ai: AiConfig,
     pub bindings: Bindings,
     pub picker_bindings: PickerBindings,
 }
@@ -45,7 +46,104 @@ pub(crate) struct BindingsConfig {
 pub(crate) struct FigmentConfig {
     pub general: GeneralConfig,
     pub style: StyleConfig,
+    #[serde(default)]
+    pub ai: AiConfig,
     pub bindings: BindingsConfig,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default)]
+pub struct AiConfig {
+    /// Whether the AI commit-message action is available.
+    pub enabled: bool,
+    /// Base URL of an OpenAI-compatible chat-completions API.
+    pub base_url: String,
+    /// Name of the environment variable holding the API key. Empty means no
+    /// `Authorization` header is sent.
+    pub api_key_env: String,
+    pub model: String,
+    /// Staged diffs larger than this are truncated before being sent.
+    pub max_diff_bytes: usize,
+    /// System prompt guiding the model. Used when no per-repository override
+    /// matches (see `repo`).
+    pub prompt_template: String,
+    /// Per-repository overrides. Keys are matched in preference order:
+    /// `owner/repo` derived from the `origin` remote URL first, then the
+    /// working directory's base name (e.g. `gitu`). Only the prompt is
+    /// overridable here — connection, credential and model settings always
+    /// come from the top-level `[ai]` section, so a cloned repository can never
+    /// redirect the request.
+    #[serde(default)]
+    pub repo: BTreeMap<String, RepoAiConfig>,
+}
+
+#[derive(Default, Debug, Deserialize)]
+#[serde(default)]
+pub struct RepoAiConfig {
+    /// Overrides [`AiConfig::prompt_template`] for this repository.
+    pub prompt_template: Option<String>,
+}
+
+impl Default for AiConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            base_url: "https://api.openai.com/v1".into(),
+            api_key_env: "OPENAI_API_KEY".into(),
+            model: "gpt-4o-mini".into(),
+            max_diff_bytes: 16000,
+            prompt_template: String::new(),
+            repo: BTreeMap::new(),
+        }
+    }
+}
+
+impl AiConfig {
+    /// Resolve the system prompt for a repository, trying each key in `keys` in
+    /// order and falling back to the global [`AiConfig::prompt_template`] when
+    /// none has a non-empty override.
+    pub fn prompt_for(&self, keys: &[&str]) -> &str {
+        keys.iter()
+            .find_map(|key| {
+                self.repo
+                    .get(*key)
+                    .and_then(|r| r.prompt_template.as_deref())
+                    .filter(|p| !p.is_empty())
+            })
+            .unwrap_or(&self.prompt_template)
+    }
+}
+
+/// Extract `owner/repo` from a git remote URL, or `None` if it can't be parsed.
+///
+/// Handles the common forms: `https://host/owner/repo(.git)`,
+/// `ssh://git@host/owner/repo(.git)`, and scp-style `git@host:owner/repo(.git)`.
+/// The last two path segments are used, so hosts with nested groups collapse to
+/// their final `group/repo` pair.
+pub(crate) fn owner_repo_from_url(url: &str) -> Option<String> {
+    let url = url.trim();
+
+    let path = if let Some(idx) = url.find("://") {
+        // scheme://[user@]host[:port]/path
+        let after = &url[idx + 3..];
+        &after[after.find('/')? + 1..]
+    } else if let Some(colon) = url.find(':') {
+        // scp-like: [user@]host:path
+        &url[colon + 1..]
+    } else {
+        url
+    };
+
+    let path = path
+        .trim_end_matches('/')
+        .trim_end_matches(".git")
+        .trim_end_matches('/');
+
+    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    match segments.as_slice() {
+        [.., owner, repo] => Some(format!("{owner}/{repo}")),
+        _ => None,
+    }
 }
 
 #[derive(Default, Debug, Deserialize)]
@@ -330,6 +428,7 @@ pub fn init_config(path: Option<PathBuf>) -> Res<Config> {
     let FigmentConfig {
         general,
         style,
+        ai,
         bindings: bindings_config,
     } = Figment::new()
         .merge(Toml::string(DEFAULT_CONFIG))
@@ -343,6 +442,7 @@ pub fn init_config(path: Option<PathBuf>) -> Res<Config> {
     Ok(Config {
         general,
         style,
+        ai,
         bindings,
         picker_bindings,
     })
@@ -360,6 +460,7 @@ pub(crate) fn init_test_config() -> Res<Config> {
     let FigmentConfig {
         mut general,
         style,
+        ai,
         bindings: bindings_config,
     } = Figment::new()
         .merge(Toml::string(DEFAULT_CONFIG))
@@ -373,6 +474,7 @@ pub(crate) fn init_test_config() -> Res<Config> {
     Ok(Config {
         general,
         style,
+        ai,
         bindings: Bindings::try_from(bindings_config.menus).unwrap(),
         picker_bindings: PickerBindings::try_from(bindings_config.picker).unwrap(),
     })
@@ -386,7 +488,72 @@ mod tests {
         providers::{Format, Toml},
     };
 
-    use super::{DEFAULT_CONFIG, FigmentConfig};
+    use super::{DEFAULT_CONFIG, FigmentConfig, owner_repo_from_url};
+
+    #[test]
+    fn ai_prompt_per_repo_override() {
+        let config: FigmentConfig = Figment::new()
+            .merge(Toml::string(DEFAULT_CONFIG))
+            .merge(Toml::string(
+                r#"
+                [ai]
+                prompt_template = "global"
+
+                [ai.repo."altsem/gitu"]
+                prompt_template = "owner-repo-specific"
+
+                [ai.repo.gitu]
+                prompt_template = "name-specific"
+                "#,
+            ))
+            .extract()
+            .unwrap();
+
+        // owner/repo is preferred over the base name.
+        assert_eq!(
+            config.ai.prompt_for(&["altsem/gitu", "gitu"]),
+            "owner-repo-specific"
+        );
+        // Falls through to the base name when owner/repo is unlisted.
+        assert_eq!(config.ai.prompt_for(&["other/gitu", "gitu"]), "name-specific");
+        // Unlisted repo falls back to the global template.
+        assert_eq!(config.ai.prompt_for(&["x/y", "z"]), "global");
+    }
+
+    #[test]
+    fn ai_prompt_empty_override_falls_back() {
+        let config: FigmentConfig = Figment::new()
+            .merge(Toml::string(DEFAULT_CONFIG))
+            .merge(Toml::string(
+                r#"
+                [ai]
+                prompt_template = "global"
+
+                [ai.repo."altsem/gitu"]
+                prompt_template = ""
+                "#,
+            ))
+            .extract()
+            .unwrap();
+
+        // An empty override is skipped rather than sending an empty prompt.
+        assert_eq!(config.ai.prompt_for(&["altsem/gitu", "gitu"]), "global");
+    }
+
+    #[test]
+    fn parses_owner_repo_from_remote_urls() {
+        let cases = [
+            ("https://github.com/altsem/gitu.git", "altsem/gitu"),
+            ("https://github.com/altsem/gitu", "altsem/gitu"),
+            ("git@github.com:altsem/gitu.git", "altsem/gitu"),
+            ("ssh://git@github.com/altsem/gitu.git", "altsem/gitu"),
+            ("https://github.com:443/altsem/gitu.git", "altsem/gitu"),
+            ("https://gitlab.com/group/sub/proj.git", "sub/proj"),
+        ];
+        for (url, expected) in cases {
+            assert_eq!(owner_repo_from_url(url).as_deref(), Some(expected), "{url}");
+        }
+    }
 
     #[test]
     fn config_merges() {

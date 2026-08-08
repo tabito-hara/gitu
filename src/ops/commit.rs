@@ -45,6 +45,84 @@ impl OpTrait for Commit {
     }
 }
 
+pub(crate) struct CommitAi;
+impl OpTrait for CommitAi {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app: &mut App, term: &mut Term| {
+            // Hold an owned `Arc` so we can read `[ai]` config without keeping
+            // `app` borrowed while calling its `&mut self` methods below.
+            let config = app.state.config.clone();
+
+            if !config.ai.enabled {
+                app.display_error(
+                    "AI commit is disabled. Set `[ai] enabled = true` in your config.",
+                );
+                return Ok(());
+            }
+
+            let diff = crate::git::diff_staged(&app.state.repo)?.text;
+            if diff.trim().is_empty() {
+                app.display_error("No staged changes to generate a commit message from");
+                return Ok(());
+            }
+
+            // Resolve the system prompt for this repository. Prefer an
+            // `[ai.repo."owner/repo"]` override (from the `origin` remote), then
+            // `[ai.repo.<name>]` (working-directory base name), then the global
+            // template. Compute the keys in a scope so the `repo` borrow is
+            // released before the `&mut app` calls below.
+            let (owner_repo, name) = {
+                let repo = &app.state.repo;
+                let owner_repo = repo
+                    .find_remote("origin")
+                    .ok()
+                    .as_ref()
+                    .and_then(|r| r.url())
+                    .and_then(crate::config::owner_repo_from_url);
+                let name = repo
+                    .workdir()
+                    .and_then(|w| w.file_name())
+                    .map(|n| n.to_string_lossy().into_owned());
+                (owner_repo, name)
+            };
+
+            let keys: Vec<&str> = [owner_repo.as_deref(), name.as_deref()]
+                .into_iter()
+                .flatten()
+                .collect();
+            let system_prompt = config.ai.prompt_for(&keys).to_string();
+
+            app.display_info("Generating commit message…");
+            app.redraw_now(term)?;
+
+            let mut cmd = Command::new("git");
+            cmd.args(["commit"]);
+
+            match crate::ai::generate_commit_message(&config.ai, &system_prompt, &diff) {
+                Ok(message) => {
+                    cmd.arg("-m");
+                    cmd.arg(message);
+                    cmd.arg("--edit");
+                }
+                Err(e) => {
+                    // Fall back to a plain editor commit so the user can still
+                    // write the message by hand.
+                    app.display_error(format!("{e}; opening editor without a draft"));
+                    cmd.arg("--edit");
+                }
+            }
+
+            cmd.args(app.state.pending_menu.as_ref().unwrap().args());
+            app.run_cmd_interactive(term, cmd)?;
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "generate".into()
+    }
+}
+
 pub(crate) struct CommitAmend;
 impl OpTrait for CommitAmend {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {

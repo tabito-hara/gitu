@@ -22,6 +22,47 @@ mouse_scroll_lines = 3
 # "never" - never prompt when discarding.
 confirm_discard = "line"
 
+[ai]
+# AI-generated commit messages (opt-in).
+# When enabled, the Commit menu gains a "generate" action that sends the staged
+# diff to an OpenAI-compatible chat-completions endpoint and pre-fills the
+# generated message in your $EDITOR via `git commit -m <message> --edit`.
+# Nothing is committed automatically: you always review/edit before saving.
+enabled = false
+# Base URL of an OpenAI-compatible API. Examples:
+# - OpenAI:            "https://api.openai.com/v1"
+# - Anthropic (compat): "https://api.anthropic.com/v1"
+# - Local (Ollama):    "http://localhost:11434/v1"
+base_url = "https://api.openai.com/v1"
+# Name of the environment variable that holds the API key. The key itself is
+# never stored in this file. Leave empty ("") to send no Authorization header
+# (useful for local models that don't require a key).
+api_key_env = "OPENAI_API_KEY"
+model = "gpt-4o-mini"
+# Staged diffs larger than this many bytes are truncated (tail dropped) before
+# being sent, to keep token usage bounded.
+max_diff_bytes = 16000
+# System prompt guiding the model. Edit to change tone/format.
+prompt_template = """You are an assistant that writes git commit messages.
+Given a staged diff, write a single concise commit message following the
+Conventional Commits format (e.g. "feat: ...", "fix: ..."). Use an imperative
+subject line under 72 characters. Add a short body only if it clarifies intent.
+Output only the commit message, with no code fences or surrounding quotes."""
+
+# Per-repository prompt overrides. Keys are matched in this order:
+#   1. `owner/repo` from the `origin` remote URL (e.g. "altsem/gitu")
+#   2. the working directory's base name (e.g. "gitu")
+# The first key with a non-empty prompt wins; otherwise the template above is
+# used. Connection, credential and model settings are never taken from here, so
+# nothing a cloned repository ships can change where the request goes. Keys with
+# a "/" (or other non-bare characters) must be quoted. Example:
+#
+# [ai.repo."altsem/gitu"]
+# prompt_template = "Rust TUI git client. Conventional Commits, terse subjects."
+#
+# [ai.repo.backend]
+# prompt_template = "Require a scope (api/db/auth). Write the message in Japanese."
+
 [style]
 # fg / bg can be either of:
 # - a hex value: "#707070"
@@ -163,6 +204,7 @@ commit_menu.--no-verify = ["-n"]
 commit_menu.--reset-author = ["-R"]
 commit_menu.--signoff = ["-s"]
 commit_menu.commit = ["c"]
+commit_menu.commit_ai = ["g"]
 commit_menu.commit_amend = ["a"]
 commit_menu.commit_extend = ["e"]
 commit_menu.commit_fixup = ["f"]

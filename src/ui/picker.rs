@@ -148,11 +148,12 @@ mod tests {
 
     /// Create a default test config for picker tests
     fn test_config() -> Config {
-        use crate::config::{GeneralConfig, PickerBindingsConfig, StyleConfig};
+        use crate::config::{AiConfig, GeneralConfig, PickerBindingsConfig, StyleConfig};
 
         Config {
             general: GeneralConfig::default(),
             style: StyleConfig::default(),
+            ai: AiConfig::default(),
             bindings: BTreeMap::new().try_into().unwrap(),
             picker_bindings: PickerBindingsConfig::default().try_into().unwrap(),
         }

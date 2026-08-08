@@ -59,6 +59,7 @@ pub enum Error {
     BaseCommitOid,
     UpstreamCommitOid,
     GitBlame(io::Error),
+    Ai(String),
 }
 
 impl std::error::Error for Error {}
@@ -166,6 +167,7 @@ impl Display for Error {
                 f.write_str("Could not resolve OID of upstream branch commit")
             }
             Error::GitBlame(e) => f.write_fmt(format_args!("Git blame error: {e}")),
+            Error::Ai(msg) => f.write_fmt(format_args!("AI error: {msg}")),
         }
     }
 }

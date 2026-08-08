@@ -1,3 +1,4 @@
+mod ai;
 pub mod app;
 mod bindings;
 pub mod cli;

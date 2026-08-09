@@ -51,11 +51,29 @@ pub(crate) struct FigmentConfig {
     pub bindings: BindingsConfig,
 }
 
+#[derive(Default, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AiBackend {
+    /// Call an OpenAI-compatible chat-completions endpoint over HTTP.
+    #[default]
+    Api,
+    /// Run a local command (e.g. the `claude` or `codex` CLI) that reads the
+    /// diff on stdin and prints the commit message on stdout.
+    Command,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct AiConfig {
     /// Whether the AI commit-message action is available.
     pub enabled: bool,
+    /// Which backend generates the message.
+    pub backend: AiBackend,
+    /// Command to run for `backend = "command"`. The first element is the
+    /// program, the rest are arguments; every `{prompt}` occurrence is replaced
+    /// with the resolved system prompt, and the staged diff is written to the
+    /// process's stdin. Example: `["claude", "-p", "{prompt}"]`.
+    pub command: Vec<String>,
     /// Base URL of an OpenAI-compatible chat-completions API.
     pub base_url: String,
     /// Name of the environment variable holding the API key. Empty means no
@@ -88,6 +106,8 @@ impl Default for AiConfig {
     fn default() -> Self {
         Self {
             enabled: false,
+            backend: AiBackend::Api,
+            command: Vec::new(),
             base_url: "https://api.openai.com/v1".into(),
             api_key_env: "OPENAI_API_KEY".into(),
             model: "gpt-4o-mini".into(),

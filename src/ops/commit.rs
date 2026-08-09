@@ -69,9 +69,10 @@ impl OpTrait for CommitAi {
             // Resolve the system prompt for this repository. Prefer an
             // `[ai.repo."owner/repo"]` override (from the `origin` remote), then
             // `[ai.repo.<name>]` (working-directory base name), then the global
-            // template. Compute the keys in a scope so the `repo` borrow is
-            // released before the `&mut app` calls below.
-            let (owner_repo, name) = {
+            // template. Compute this in a scope so the `repo` borrow is released
+            // before the `&mut app` calls below. `workdir` is also the directory
+            // a command backend runs in.
+            let (owner_repo, name, workdir) = {
                 let repo = &app.state.repo;
                 let owner_repo = repo
                     .find_remote("origin")
@@ -83,7 +84,8 @@ impl OpTrait for CommitAi {
                     .workdir()
                     .and_then(|w| w.file_name())
                     .map(|n| n.to_string_lossy().into_owned());
-                (owner_repo, name)
+                let workdir = repo.workdir().map(std::path::Path::to_path_buf);
+                (owner_repo, name, workdir)
             };
 
             let keys: Vec<&str> = [owner_repo.as_deref(), name.as_deref()]
@@ -91,6 +93,7 @@ impl OpTrait for CommitAi {
                 .flatten()
                 .collect();
             let system_prompt = config.ai.prompt_for(&keys).to_string();
+            let cwd = workdir.unwrap_or_else(|| std::path::PathBuf::from("."));
 
             app.display_info("Generating commit message…");
             app.redraw_now(term)?;
@@ -98,7 +101,7 @@ impl OpTrait for CommitAi {
             let mut cmd = Command::new("git");
             cmd.args(["commit"]);
 
-            match crate::ai::generate_commit_message(&config.ai, &system_prompt, &diff) {
+            match crate::ai::generate_commit_message(&config.ai, &system_prompt, &diff, &cwd) {
                 Ok(message) => {
                     cmd.arg("-m");
                     cmd.arg(message);

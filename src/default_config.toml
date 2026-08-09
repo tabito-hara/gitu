@@ -29,6 +29,28 @@ confirm_discard = "line"
 # generated message in your $EDITOR via `git commit -m <message> --edit`.
 # Nothing is committed automatically: you always review/edit before saving.
 enabled = false
+
+# How the message is generated:
+#   "api"     - call the OpenAI-compatible endpoint below (default)
+#   "command" - run a local CLI that reads the diff on stdin and prints the
+#               message on stdout (see `command`)
+backend = "api"
+
+# Command for backend = "command". The first element is the program, the rest
+# are arguments; every "{prompt}" is replaced with the system prompt, and the
+# staged diff is written to the command's stdin. This reuses the CLI's own login
+# (subscription / browser auth), so no API key is needed here.
+#
+# Each run starts a fresh one-shot session (no context carried over between
+# commits). Both CLIs persist a session transcript to disk by default; codex can
+# skip that with `--ephemeral` (claude has no such flag, so its transcripts
+# accumulate under ~/.claude/projects/). Examples:
+#   command = ["claude", "-p", "{prompt}"]
+#   command = ["codex", "exec", "-s", "read-only", "--ephemeral", "{prompt}"]
+# Add "--model sonnet" / "-m ..." to the arguments to pick a model.
+command = []
+
+# --- Settings below apply to backend = "api" only ---
 # Base URL of an OpenAI-compatible API. Examples:
 # - OpenAI:            "https://api.openai.com/v1"
 # - Anthropic (compat): "https://api.anthropic.com/v1"

@@ -1,18 +1,91 @@
-use crate::{Res, config::AiConfig, error::Error};
+use crate::{
+    Res,
+    config::{AiBackend, AiConfig},
+    error::Error,
+};
+use std::{
+    io::Write,
+    path::Path,
+    process::{Command, Stdio},
+};
 
-/// Generate a commit message for `diff` using an OpenAI-compatible
-/// chat-completions endpoint described by `config`.
+/// Generate a commit message for `diff`, using whichever backend `config`
+/// selects (an OpenAI-compatible HTTP API, or a local command such as the
+/// `claude` / `codex` CLI).
 ///
-/// The call is synchronous and blocks until the API responds. On any failure
-/// (missing key, network error, non-2xx response, unexpected body) an
-/// [`Error::Ai`] is returned so callers can fall back to a plain commit.
+/// The call is synchronous and blocks until it completes. On any failure an
+/// [`Error::Ai`] is returned so callers can fall back to a plain commit. `cwd`
+/// is the directory a command backend runs in (the repository working tree).
 pub(crate) fn generate_commit_message(
     config: &AiConfig,
     system_prompt: &str,
     diff: &str,
+    cwd: &Path,
 ) -> Res<String> {
     let diff = truncate_diff(diff, config.max_diff_bytes);
 
+    match config.backend {
+        AiBackend::Api => generate_via_api(config, system_prompt, &diff),
+        AiBackend::Command => generate_via_command(&config.command, system_prompt, &diff, cwd),
+    }
+}
+
+/// Run the configured command, writing the diff to its stdin and returning its
+/// stdout as the commit message. `{prompt}` in any argument is replaced with the
+/// system prompt.
+fn generate_via_command(
+    command: &[String],
+    system_prompt: &str,
+    diff: &str,
+    cwd: &Path,
+) -> Res<String> {
+    let (program, args) = command
+        .split_first()
+        .ok_or_else(|| Error::Ai("[ai].command is empty".into()))?;
+
+    let mut cmd = Command::new(program);
+    for arg in args {
+        cmd.arg(arg.replace("{prompt}", system_prompt));
+    }
+    cmd.current_dir(cwd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| Error::Ai(format!("failed to run {program}: {e}")))?;
+
+    child
+        .stdin
+        .take()
+        .expect("stdin was piped")
+        .write_all(diff.as_bytes())
+        .map_err(|e| Error::Ai(format!("failed to write diff to {program}: {e}")))?;
+
+    let output = child
+        .wait_with_output()
+        .map_err(|e| Error::Ai(format!("failed to wait for {program}: {e}")))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(Error::Ai(format!(
+            "{program} exited with {}: {}",
+            output.status,
+            stderr.trim()
+        )));
+    }
+
+    let message = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if message.is_empty() {
+        return Err(Error::Ai(format!("{program} produced no output")));
+    }
+
+    Ok(message)
+}
+
+/// Call an OpenAI-compatible chat-completions endpoint and return the message.
+fn generate_via_api(config: &AiConfig, system_prompt: &str, diff: &str) -> Res<String> {
     let url = format!("{}/chat/completions", config.base_url.trim_end_matches('/'));
 
     let body = serde_json::json!({
@@ -84,7 +157,42 @@ fn truncate_diff(diff: &str, max_bytes: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::truncate_diff;
+    use super::{generate_via_command, truncate_diff};
+    use std::path::Path;
+
+    fn s(args: &[&str]) -> Vec<String> {
+        args.iter().map(|a| a.to_string()).collect()
+    }
+
+    #[test]
+    fn command_pipes_diff_to_stdin() {
+        // `cat` echoes stdin (the diff) back to stdout.
+        let out = generate_via_command(&s(&["cat"]), "unused prompt", "the diff", Path::new("."));
+        assert_eq!(out.unwrap(), "the diff");
+    }
+
+    #[test]
+    fn command_substitutes_prompt_placeholder() {
+        // `sh -c 'printf %s "$1"' sh <arg>` prints the argument, where {prompt}
+        // has been replaced with the system prompt.
+        let out = generate_via_command(
+            &s(&["sh", "-c", "printf %s \"$1\"", "sh", "{prompt}"]),
+            "SYSTEM PROMPT",
+            "ignored diff",
+            Path::new("."),
+        );
+        assert_eq!(out.unwrap(), "SYSTEM PROMPT");
+    }
+
+    #[test]
+    fn command_empty_is_an_error() {
+        assert!(generate_via_command(&[], "p", "d", Path::new(".")).is_err());
+    }
+
+    #[test]
+    fn command_nonzero_exit_is_an_error() {
+        assert!(generate_via_command(&s(&["false"]), "p", "d", Path::new(".")).is_err());
+    }
 
     #[test]
     fn no_truncation_when_within_limit() {

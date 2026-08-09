@@ -16,6 +16,10 @@ heaptrack:
 	cargo build --profile profiling
 	heaptrack target/profiling/gitu
 
+install: install-local
+
+install-local:
+	cargo install --path . --force --offline
+
 test-depend:
 	cargo install cargo-insta git-cliff || true
-

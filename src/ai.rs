@@ -26,16 +26,19 @@ pub(crate) fn generate_commit_message(
 
     match config.backend {
         AiBackend::Api => generate_via_api(config, system_prompt, &diff),
-        AiBackend::Command => generate_via_command(&config.command, system_prompt, &diff, cwd),
+        AiBackend::Command => {
+            generate_via_command(&config.command, system_prompt, &config.model, &diff, cwd)
+        }
     }
 }
 
 /// Run the configured command, writing the diff to its stdin and returning its
-/// stdout as the commit message. `{prompt}` in any argument is replaced with the
-/// system prompt.
+/// stdout as the commit message. In each argument, `{model}` is replaced with
+/// the configured model and `{prompt}` with the system prompt.
 fn generate_via_command(
     command: &[String],
     system_prompt: &str,
+    model: &str,
     diff: &str,
     cwd: &Path,
 ) -> Res<String> {
@@ -45,7 +48,9 @@ fn generate_via_command(
 
     let mut cmd = Command::new(program);
     for arg in args {
-        cmd.arg(arg.replace("{prompt}", system_prompt));
+        // Replace `{model}` before `{prompt}` so a prompt that happens to
+        // contain the literal `{model}` is not re-substituted.
+        cmd.arg(arg.replace("{model}", model).replace("{prompt}", system_prompt));
     }
     cmd.current_dir(cwd)
         .stdin(Stdio::piped())
@@ -167,7 +172,13 @@ mod tests {
     #[test]
     fn command_pipes_diff_to_stdin() {
         // `cat` echoes stdin (the diff) back to stdout.
-        let out = generate_via_command(&s(&["cat"]), "unused prompt", "the diff", Path::new("."));
+        let out = generate_via_command(
+            &s(&["cat"]),
+            "unused prompt",
+            "unused model",
+            "the diff",
+            Path::new("."),
+        );
         assert_eq!(out.unwrap(), "the diff");
     }
 
@@ -178,6 +189,7 @@ mod tests {
         let out = generate_via_command(
             &s(&["sh", "-c", "printf %s \"$1\"", "sh", "{prompt}"]),
             "SYSTEM PROMPT",
+            "unused model",
             "ignored diff",
             Path::new("."),
         );
@@ -185,13 +197,25 @@ mod tests {
     }
 
     #[test]
+    fn command_substitutes_model_placeholder() {
+        let out = generate_via_command(
+            &s(&["sh", "-c", "printf %s \"$1\"", "sh", "{model}"]),
+            "unused prompt",
+            "sonnet",
+            "ignored diff",
+            Path::new("."),
+        );
+        assert_eq!(out.unwrap(), "sonnet");
+    }
+
+    #[test]
     fn command_empty_is_an_error() {
-        assert!(generate_via_command(&[], "p", "d", Path::new(".")).is_err());
+        assert!(generate_via_command(&[], "p", "m", "d", Path::new(".")).is_err());
     }
 
     #[test]
     fn command_nonzero_exit_is_an_error() {
-        assert!(generate_via_command(&s(&["false"]), "p", "d", Path::new(".")).is_err());
+        assert!(generate_via_command(&s(&["false"]), "p", "m", "d", Path::new(".")).is_err());
     }
 
     #[test]

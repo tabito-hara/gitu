@@ -37,20 +37,25 @@ enabled = false
 backend = "api"
 
 # Command for backend = "command". The first element is the program, the rest
-# are arguments; every "{prompt}" is replaced with the system prompt, and the
-# staged diff is written to the command's stdin. This reuses the CLI's own login
-# (subscription / browser auth), so no API key is needed here.
+# are arguments; in each argument "{model}" is replaced with `model` (below) and
+# "{prompt}" with the system prompt, and the staged diff is written to the
+# command's stdin. This reuses the CLI's own login (subscription / browser
+# auth), so no API key is needed here.
 #
 # Each run starts a fresh one-shot session (no context carried over between
 # commits). Both CLIs persist a session transcript to disk by default; codex can
 # skip that with `--ephemeral` (claude has no such flag, so its transcripts
 # accumulate under ~/.claude/projects/). Examples:
-#   command = ["claude", "-p", "{prompt}"]
-#   command = ["codex", "exec", "-s", "read-only", "--ephemeral", "{prompt}"]
-# Add "--model sonnet" / "-m ..." to the arguments to pick a model.
+#   command = ["claude", "-p", "--model", "{model}", "{prompt}"]
+#   command = ["codex", "exec", "-m", "{model}", "-s", "read-only", "--ephemeral", "{prompt}"]
 command = []
 
-# --- Settings below apply to backend = "api" only ---
+# Model id. Used by the "api" backend, and substituted for "{model}" in
+# `command`. For a CLI backend, set this to a model that CLI understands
+# (e.g. "sonnet" for claude).
+model = "gpt-4o-mini"
+
+# --- base_url and api_key_env below are used by backend = "api" only ---
 # Base URL of an OpenAI-compatible API. Examples:
 # - OpenAI:            "https://api.openai.com/v1"
 # - Anthropic (compat): "https://api.anthropic.com/v1"
@@ -60,7 +65,6 @@ base_url = "https://api.openai.com/v1"
 # never stored in this file. Leave empty ("") to send no Authorization header
 # (useful for local models that don't require a key).
 api_key_env = "OPENAI_API_KEY"
-model = "gpt-4o-mini"
 # Staged diffs larger than this many bytes are truncated (tail dropped) before
 # being sent, to keep token usage bounded.
 max_diff_bytes = 16000

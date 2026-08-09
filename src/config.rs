@@ -70,9 +70,10 @@ pub struct AiConfig {
     /// Which backend generates the message.
     pub backend: AiBackend,
     /// Command to run for `backend = "command"`. The first element is the
-    /// program, the rest are arguments; every `{prompt}` occurrence is replaced
-    /// with the resolved system prompt, and the staged diff is written to the
-    /// process's stdin. Example: `["claude", "-p", "{prompt}"]`.
+    /// program, the rest are arguments; in each argument `{model}` is replaced
+    /// with [`AiConfig::model`] and `{prompt}` with the resolved system prompt,
+    /// and the staged diff is written to the process's stdin.
+    /// Example: `["claude", "-p", "--model", "{model}", "{prompt}"]`.
     pub command: Vec<String>,
     /// Base URL of an OpenAI-compatible chat-completions API.
     pub base_url: String,

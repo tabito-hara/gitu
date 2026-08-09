@@ -59,6 +59,25 @@ pub(crate) struct CheckoutNewBranch;
 impl OpTrait for CheckoutNewBranch {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {
         Some(Rc::new(|app: &mut App, term: &mut Term| {
+            // Like Magit (default `magit-branch-read-upstream-first`), ask for
+            // the starting point first — defaulting to the current branch and
+            // selectable from the same list as Checkout — then the branch name.
+            let start_point = app.pick(
+                term,
+                PickerState::with_refs(PickerParams {
+                    prompt: "Starting branch".into(),
+                    refs: &git::branches_tags(&app.state.repo)?,
+                    exclude_ref: None,
+                    default: Some(git::head(&app.state.repo)?),
+                    allow_custom_input: true,
+                }),
+            )?;
+
+            let Some(data) = start_point else {
+                return Ok(());
+            };
+            let start_point = data.display().to_string();
+
             let branch_name = app.prompt(
                 term,
                 &PromptParams {
@@ -67,7 +86,11 @@ impl OpTrait for CheckoutNewBranch {
                 },
             )?;
 
-            checkout_new_branch_prompt_update(app, term, &branch_name)?;
+            if branch_name.is_empty() {
+                return Err(Error::BranchNameRequired);
+            }
+
+            checkout_new_branch(app, term, &branch_name, &start_point)?;
             Ok(())
         }))
     }
@@ -77,9 +100,14 @@ impl OpTrait for CheckoutNewBranch {
     }
 }
 
-fn checkout_new_branch_prompt_update(app: &mut App, term: &mut Term, branch_name: &str) -> Res<()> {
+fn checkout_new_branch(
+    app: &mut App,
+    term: &mut Term,
+    branch_name: &str,
+    start_point: &str,
+) -> Res<()> {
     let mut cmd = Command::new("git");
-    cmd.args(["checkout", "-b", branch_name]);
+    cmd.args(["checkout", "-b", branch_name, start_point]);
     app.run_cmd(term, &[], cmd)?;
     Ok(())
 }

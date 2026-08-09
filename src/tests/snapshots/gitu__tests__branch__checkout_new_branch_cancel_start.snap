@@ -2,10 +2,11 @@
 source: src/tests/branch.rs
 expression: ctx.redact_buffer()
 ---
-▌On branch new                                                                  |
+▌On branch main                                                                 |
+▌Your branch is up to date with 'origin/main'.                                  |
                                                                                 |
  Recent commits                                                                 |
- b66a0bf main new origin/main add initial-file                   Author Name __ |
+ b66a0bf main v1.0.0 v2.0.0 origin/main add initial-file         Author Name __ |
                                                                                 |
                                                                                 |
                                                                                 |
@@ -19,7 +20,6 @@ expression: ctx.redact_buffer()
                                                                                 |
                                                                                 |
                                                                                 |
-────────────────────────────────────────────────────────────────────────────────|
-$ git checkout -b new main                                                      |
-Switched to a new branch 'new'                                                  |
-styles_hash: 4808430fd528515e
+                                                                                |
+                                                                                |
+styles_hash: d6ae4172afe777b1

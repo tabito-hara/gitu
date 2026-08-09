@@ -105,7 +105,21 @@ fn rename_current_branch() {
 
 #[test]
 fn checkout_new_branch() {
-    snapshot!(setup_clone!(), "bcnew<enter>");
+    // Starting-branch picker first (<enter> accepts the current branch), then
+    // the new branch name.
+    snapshot!(setup_clone!(), "bc<enter>new<enter>");
+}
+
+#[test]
+fn checkout_new_branch_from_selected_start() {
+    // Pick a different starting branch from the list, then name it.
+    snapshot!(setup_picker(setup_clone!()), "bcfeature-a<enter>new<enter>");
+}
+
+#[test]
+fn checkout_new_branch_cancel_start() {
+    // Cancelling the starting-branch picker aborts creation.
+    snapshot!(setup_picker(setup_clone!()), "bc<esc>");
 }
 
 // ==================== Spinoff Tests ====================

@@ -75,18 +75,24 @@ Conventional Commits format (e.g. "feat: ...", "fix: ..."). Use an imperative
 subject line under 72 characters. Add a short body only if it clarifies intent.
 Output only the commit message, with no code fences or surrounding quotes."""
 
-# Per-repository prompt overrides. Keys are matched in this order:
+# Per-repository prompt overrides. Keys are matched against two candidates:
 #   1. `owner/repo` from the `origin` remote URL (e.g. "altsem/gitu")
 #   2. the working directory's base name (e.g. "gitu")
-# The first key with a non-empty prompt wins; otherwise the template above is
-# used. Connection, credential and model settings are never taken from here, so
-# nothing a cloned repository ships can change where the request goes. Keys with
-# a "/" (or other non-bare characters) must be quoted. Example:
+# A key may be a wildcard pattern using "*" (any sequence, including "/") or "?"
+# (one character), e.g. "altsem/*" for a whole org or "*" for every repo. Exact
+# keys win over patterns; among patterns, the most specific (most literal
+# characters) wins; then the template above is used. Connection, credential and
+# model settings are never taken from here, so nothing a cloned repository ships
+# can change where the request goes. Keys with "/", "*" or other non-bare
+# characters must be quoted. Example:
 #
-# [ai.repo."altsem/gitu"]
+# [ai.repo."altsem/gitu"]     # exact repo
 # prompt_template = "Rust TUI git client. Conventional Commits, terse subjects."
 #
-# [ai.repo.backend]
+# [ai.repo."altsem/*"]        # every repo under the altsem org
+# prompt_template = "Write terse Conventional Commits subjects."
+#
+# [ai.repo.backend]           # any repo whose directory is named "backend"
 # prompt_template = "Require a scope (api/db/auth). Write the message in Japanese."
 
 [style]

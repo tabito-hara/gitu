@@ -86,11 +86,13 @@ pub struct AiConfig {
     /// System prompt guiding the model. Used when no per-repository override
     /// matches (see `repo`).
     pub prompt_template: String,
-    /// Per-repository overrides. Keys are matched in preference order:
-    /// `owner/repo` derived from the `origin` remote URL first, then the
-    /// working directory's base name (e.g. `gitu`). Only the prompt is
-    /// overridable here — connection, credential and model settings always
-    /// come from the top-level `[ai]` section, so a cloned repository can never
+    /// Per-repository overrides. Keys are matched against `owner/repo` (from the
+    /// `origin` remote URL) and the working directory's base name (e.g. `gitu`).
+    /// A key may be a wildcard pattern using `*` (any sequence) or `?` (one
+    /// character), e.g. `"altsem/*"` or `"*"`. Exact keys win over patterns, and
+    /// the most specific pattern wins among patterns. Only the prompt is
+    /// overridable here — connection, credential and model settings always come
+    /// from the top-level `[ai]` section, so a cloned repository can never
     /// redirect the request.
     #[serde(default)]
     pub repo: BTreeMap<String, RepoAiConfig>,
@@ -123,16 +125,85 @@ impl AiConfig {
     /// Resolve the system prompt for a repository, trying each key in `keys` in
     /// order and falling back to the global [`AiConfig::prompt_template`] when
     /// none has a non-empty override.
+    ///
+    /// Resolution order: exact matches first (in key order), then wildcard
+    /// patterns (in key order; the most specific pattern wins), then the global
+    /// template. A key is a wildcard pattern when it contains `*` or `?`.
     pub fn prompt_for(&self, keys: &[&str]) -> &str {
-        keys.iter()
-            .find_map(|key| {
-                self.repo
-                    .get(*key)
-                    .and_then(|r| r.prompt_template.as_deref())
-                    .filter(|p| !p.is_empty())
-            })
-            .unwrap_or(&self.prompt_template)
+        // 1. Exact matches, honoring key order (e.g. owner/repo before name).
+        for key in keys {
+            if let Some(prompt) = self
+                .repo
+                .get(*key)
+                .and_then(|r| r.prompt_template.as_deref())
+                .filter(|p| !p.is_empty())
+            {
+                return prompt;
+            }
+        }
+
+        // 2. Wildcard patterns, honoring key order; most specific pattern wins.
+        for key in keys {
+            let mut best: Option<(usize, &str)> = None;
+            for (pattern, cfg) in &self.repo {
+                if !is_wildcard(pattern) || !glob_match(pattern, key) {
+                    continue;
+                }
+                let Some(prompt) = cfg.prompt_template.as_deref().filter(|p| !p.is_empty()) else {
+                    continue;
+                };
+                // Specificity = number of literal (non-wildcard) characters.
+                let specificity = pattern.chars().filter(|c| !matches!(c, '*' | '?')).count();
+                if best.is_none_or(|(best_spec, _)| specificity > best_spec) {
+                    best = Some((specificity, prompt));
+                }
+            }
+            if let Some((_, prompt)) = best {
+                return prompt;
+            }
+        }
+
+        // 3. Fall back to the global template.
+        &self.prompt_template
     }
+}
+
+fn is_wildcard(pattern: &str) -> bool {
+    pattern.contains('*') || pattern.contains('?')
+}
+
+/// Match `text` against a glob `pattern` where `*` matches any sequence of
+/// characters (including `/` and the empty string) and `?` matches exactly one.
+fn glob_match(pattern: &str, text: &str) -> bool {
+    let p: Vec<char> = pattern.chars().collect();
+    let t: Vec<char> = text.chars().collect();
+    let (mut pi, mut ti) = (0usize, 0usize);
+    // Backtracking position of the last `*` and where it started matching.
+    let (mut star, mut resume) = (None, 0usize);
+
+    while ti < t.len() {
+        if pi < p.len() && (p[pi] == '?' || p[pi] == t[ti]) {
+            pi += 1;
+            ti += 1;
+        } else if pi < p.len() && p[pi] == '*' {
+            star = Some(pi);
+            resume = ti;
+            pi += 1;
+        } else if let Some(s) = star {
+            // Backtrack: let the last `*` consume one more character.
+            pi = s + 1;
+            resume += 1;
+            ti = resume;
+        } else {
+            return false;
+        }
+    }
+
+    // Any trailing `*`s can match the empty string.
+    while pi < p.len() && p[pi] == '*' {
+        pi += 1;
+    }
+    pi == p.len()
 }
 
 /// Extract `owner/repo` from a git remote URL, or `None` if it can't be parsed.
@@ -509,7 +580,7 @@ mod tests {
         providers::{Format, Toml},
     };
 
-    use super::{DEFAULT_CONFIG, FigmentConfig, owner_repo_from_url};
+    use super::{DEFAULT_CONFIG, FigmentConfig, glob_match, owner_repo_from_url};
 
     #[test]
     fn ai_prompt_per_repo_override() {
@@ -559,6 +630,48 @@ mod tests {
 
         // An empty override is skipped rather than sending an empty prompt.
         assert_eq!(config.ai.prompt_for(&["altsem/gitu", "gitu"]), "global");
+    }
+
+    #[test]
+    fn ai_prompt_wildcard_override() {
+        let config: FigmentConfig = Figment::new()
+            .merge(Toml::string(DEFAULT_CONFIG))
+            .merge(Toml::string(
+                r#"
+                [ai]
+                prompt_template = "global"
+
+                [ai.repo."*"]
+                prompt_template = "catch-all"
+
+                [ai.repo."altsem/*"]
+                prompt_template = "org-wide"
+
+                [ai.repo."altsem/gitu"]
+                prompt_template = "exact"
+                "#,
+            ))
+            .extract()
+            .unwrap();
+
+        // Exact key wins over any pattern.
+        assert_eq!(config.ai.prompt_for(&["altsem/gitu", "gitu"]), "exact");
+        // Most specific pattern wins ("altsem/*" over "*").
+        assert_eq!(config.ai.prompt_for(&["altsem/other", "other"]), "org-wide");
+        // Falls back to the catch-all pattern.
+        assert_eq!(config.ai.prompt_for(&["someone/x", "x"]), "catch-all");
+    }
+
+    #[test]
+    fn glob_matching() {
+        assert!(glob_match("*", "anything/at-all"));
+        assert!(glob_match("altsem/*", "altsem/gitu"));
+        assert!(glob_match("*/gitu", "altsem/gitu"));
+        assert!(glob_match("altsem/gi?u", "altsem/gitu"));
+        assert!(glob_match("a*u", "altsem/gitu"));
+        assert!(!glob_match("altsem/*", "other/gitu"));
+        assert!(!glob_match("gitu", "gitu2"));
+        assert!(!glob_match("altsem/gi?", "altsem/gitu"));
     }
 
     #[test]

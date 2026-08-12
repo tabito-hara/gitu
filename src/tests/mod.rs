@@ -389,6 +389,21 @@ mod show_refs {
         run(&ctx.dir, &["git", "branch", "feature-b"]);
         snapshot!(ctx, "Yj<ctrl+space>jbk");
     }
+
+    #[test]
+    fn show_refs_mark_branch_for_delete() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        snapshot!(ctx, "Yjd");
+    }
+
+    #[test]
+    fn show_refs_execute_marked_branch_deletes() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        run(&ctx.dir, &["git", "branch", "feature-b"]);
+        snapshot!(ctx, "Yjddx");
+    }
 }
 
 #[test]

@@ -4,23 +4,23 @@ assertion_line: 53
 expression: ctx.redact_buffer()
 ---
 ────────────────────────────────────────────────────────────────────────────────|
- Help                                     Submenu           On branch main      |
- Y                Show Refs               b   Branch        tab Fold            |
- S                Stage all modified      c   Commit                            |
- U                Unstage all             f   Fetch                             |
- k/up             Up                      h/? Help                              |
- j/down           Down                    l   Log                               |
- ctrl+k/ctrl+up   Up line                 m   Merge                             |
- ctrl+j/ctrl+down Down line               M   Remote                            |
- alt+k/alt+up     Prev section            F   Pull                              |
- alt+j/alt+down   Next section            P   Push                              |
- alt+h/alt+left   Parent section          r   Rebase                            |
- g+g              Top                     X   Reset                             |
- G                Bottom                  V   Revert                            |
- ctrl+u           Scroll half page up     A   Cherry-pick                       |
- ctrl+d           Scroll half page down   z   Stash                             |
+ Help                                      Submenu           On branch main     |
+ x                Delete marked branches   b   Branch        tab Fold           |
+ Y                Show Refs                c   Commit                           |
+ S                Stage all modified       f   Fetch                            |
+ U                Unstage all              h/? Help                             |
+ k/up             Up                       l   Log                              |
+ j/down           Down                     m   Merge                            |
+ ctrl+k/ctrl+up   Up line                  M   Remote                           |
+ ctrl+j/ctrl+down Down line                F   Pull                             |
+ alt+k/alt+up     Prev section             P   Push                             |
+ alt+j/alt+down   Next section             r   Rebase                           |
+ alt+h/alt+left   Parent section           X   Reset                            |
+ g+g              Top                      V   Revert                           |
+ G                Bottom                   A   Cherry-pick                      |
+ ctrl+u           Scroll half page up      z   Stash                            |
+ ctrl+d           Scroll half page down                                         |
  ctrl+space       Set mark                                                      |
  ctrl+g           Clear mark                                                    |
  g+r              Refresh                                                       |
- q/esc            Quit/Close                                                    |
-styles_hash: 147baf2dd84118a4
+styles_hash: 3f96d55d7f36edbd

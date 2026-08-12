@@ -211,6 +211,8 @@ root.apply = ["a"]
 root.reverse = ["v"]
 root.copy_hash = ["y"]
 root.blame = ["B"]
+root.mark_delete = ["d"]
+root.execute_deletes = ["x"]
 
 picker.next = ["down", "ctrl+n", "tab"]
 picker.previous = ["up", "ctrl+p", "backtab"]

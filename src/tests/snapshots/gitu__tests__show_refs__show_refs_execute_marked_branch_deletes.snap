@@ -1,0 +1,26 @@
+---
+source: src/tests/mod.rs
+assertion_line: 405
+expression: ctx.redact_buffer()
+---
+ Branches                                                                       |
+ * main merged add initial-file                                          b66a0bf|
+                                                                                |
+▌Remote origin                                                                  |
+▌  origin/HEAD merged add initial-file                                   b66a0bf|
+▌  origin/main merged add initial-file                                   b66a0bf|
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+────────────────────────────────────────────────────────────────────────────────|
+$ git branch -d feature-a feature-b                                             |
+Deleted branch feature-a (was b66a0bf).                                         |
+Deleted branch feature-b (was b66a0bf).                                         |
+styles_hash: 1c03ccf8811ffe5b

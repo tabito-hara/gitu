@@ -10,6 +10,7 @@ use crate::{
     item_data::{ItemData, Ref},
     menu::arg::Arg,
     picker::{PickerParams, PickerState},
+    screen::NavMode,
     term::Term,
 };
 use std::{process::Command, rc::Rc};
@@ -145,6 +146,54 @@ impl OpTrait for Delete {
 
     fn display(&self, _state: &State) -> String {
         "Delete branch".into()
+    }
+}
+
+pub(crate) struct MarkDelete;
+impl OpTrait for MarkDelete {
+    fn get_action(&self, target: &ItemData) -> Option<Action> {
+        if !matches!(
+            target,
+            ItemData::Reference {
+                kind: Ref::Head(_),
+                ..
+            }
+        ) {
+            return None;
+        }
+
+        Some(Rc::new(move |app: &mut App, _term: &mut Term| {
+            if app.screen_mut().mark_selected_branch_for_delete() {
+                app.screen_mut().select_next(NavMode::Normal);
+            }
+            Ok(())
+        }))
+    }
+
+    fn is_target_op(&self) -> bool {
+        true
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Mark branch for deletion".into()
+    }
+}
+
+pub(crate) struct ExecuteDeletes;
+impl OpTrait for ExecuteDeletes {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(move |app: &mut App, term: &mut Term| {
+            let branches = app.screen().delete_marked_branches();
+            if !branches.is_empty() {
+                delete_many(app, term, &branches)?;
+                app.screen_mut().clear_mark();
+            }
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Delete marked branches".into()
     }
 }
 

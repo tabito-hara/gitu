@@ -39,6 +39,7 @@ pub(crate) struct Screen {
     pub(crate) size: (u16, u16),
     cursor: usize,
     mark: Option<usize>,
+    delete_marked_branches: BTreeSet<String>,
     scroll: usize,
     config: Arc<Config>,
     refresh_items: Box<dyn Fn() -> Res<Vec<Item>>>,
@@ -70,6 +71,7 @@ impl Screen {
         let mut screen = Self {
             cursor: 0,
             mark: None,
+            delete_marked_branches: BTreeSet::new(),
             scroll: 0,
             size,
             config,
@@ -326,6 +328,7 @@ impl Screen {
                 let view = ItemView {
                     item_index,
                     cursor_highlighted: false,
+                    delete_marked_branch: false,
                     marked: false,
                 };
                 layout_item(&mut layout, self, false, view);
@@ -466,6 +469,34 @@ impl Screen {
 
     pub(crate) fn clear_mark(&mut self) {
         self.mark = None;
+        self.delete_marked_branches.clear();
+    }
+
+    pub(crate) fn mark_selected_branch_for_delete(&mut self) -> bool {
+        let ItemData::Reference {
+            kind: Ref::Head(branch),
+            ..
+        } = &self.items[self.cursor].data
+        else {
+            return false;
+        };
+
+        self.delete_marked_branches.insert(branch.clone());
+        true
+    }
+
+    pub(crate) fn delete_marked_branches(&self) -> Vec<String> {
+        self.delete_marked_branches.iter().cloned().collect()
+    }
+
+    fn is_delete_marked_branch(&self, item: &Item) -> bool {
+        match &item.data {
+            ItemData::Reference {
+                kind: Ref::Head(branch),
+                ..
+            } => self.delete_marked_branches.contains(branch),
+            _ => false,
+        }
     }
 
     pub(crate) fn selected_hunk_line_range(&self) -> Option<HunkLineSelection> {
@@ -689,6 +720,7 @@ impl Screen {
                 Some(ItemView {
                     item_index,
                     cursor_highlighted,
+                    delete_marked_branch: self.is_delete_marked_branch(item),
                     marked: marked_range
                         .as_ref()
                         .is_some_and(|range| range.contains(&item_index)),
@@ -701,6 +733,7 @@ impl Screen {
 struct ItemView {
     item_index: usize,
     cursor_highlighted: bool,
+    delete_marked_branch: bool,
     marked: bool,
 }
 
@@ -784,7 +817,7 @@ fn layout_item<'a>(layout: &mut UiTree<'a>, screen: &'a Screen, hide_cursor: boo
     let bg = area_sel.patch(line_sel);
 
     layout.row_with(bg, opts().fill_x(), |layout| {
-        let gutter_char = if !hide_cursor && line.is_highlighted() {
+        let gutter_char = if !hide_cursor && (line.is_highlighted() || line.delete_marked_branch) {
             gutter_char(style, &line, is_line_sel, bg)
         } else {
             (" ".into(), Style::new())
@@ -808,7 +841,9 @@ fn gutter_char<'a>(
     is_line_sel: bool,
     bg: Style,
 ) -> (Cow<'a, str>, Style) {
-    if is_line_sel {
+    if line.delete_marked_branch {
+        ("D".into(), bg.patch(Style::from(&style.mark_bar)))
+    } else if is_line_sel {
         (
             style.cursor.symbol.to_string().into(),
             bg.patch(Style::from(&style.cursor)),
@@ -846,7 +881,7 @@ fn area_selection_highlight(style: &StyleConfig, line: &ItemView) -> Style {
 
 impl ItemView {
     fn is_highlighted(&self) -> bool {
-        self.cursor_highlighted || self.marked
+        self.cursor_highlighted || self.marked || self.delete_marked_branch
     }
 }
 

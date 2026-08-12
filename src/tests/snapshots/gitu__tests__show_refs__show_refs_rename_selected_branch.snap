@@ -4,12 +4,12 @@ assertion_line: 372
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
-▌  feature-renamed add initial-file                                      b66a0bf|
- * main add initial-file                                                 b66a0bf|
+▌  feature-renamed merged add initial-file                               b66a0bf|
+ * main merged add initial-file                                          b66a0bf|
                                                                                 |
  Remote origin                                                                  |
-   origin/HEAD add initial-file                                          b66a0bf|
-   origin/main add initial-file                                          b66a0bf|
+   origin/HEAD merged add initial-file                                   b66a0bf|
+   origin/main merged add initial-file                                   b66a0bf|
                                                                                 |
                                                                                 |
                                                                                 |
@@ -23,4 +23,4 @@ expression: ctx.redact_buffer()
                                                                                 |
 ────────────────────────────────────────────────────────────────────────────────|
 $ git branch -m feature-a feature-renamed                                       |
-styles_hash: aab4cbe0c9988cfa
+styles_hash: a77b337bcce7aa6d

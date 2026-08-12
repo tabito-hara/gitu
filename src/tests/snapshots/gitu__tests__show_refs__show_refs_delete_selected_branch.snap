@@ -4,11 +4,11 @@ assertion_line: 365
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
-▌* main add initial-file                                                 b66a0bf|
+▌* main merged add initial-file                                          b66a0bf|
                                                                                 |
  Remote origin                                                                  |
-   origin/HEAD add initial-file                                          b66a0bf|
-   origin/main add initial-file                                          b66a0bf|
+   origin/HEAD merged add initial-file                                   b66a0bf|
+   origin/main merged add initial-file                                   b66a0bf|
                                                                                 |
                                                                                 |
                                                                                 |
@@ -23,4 +23,4 @@ expression: ctx.redact_buffer()
 ────────────────────────────────────────────────────────────────────────────────|
 $ git branch -d feature-a                                                       |
 Deleted branch feature-a (was b66a0bf).                                         |
-styles_hash: 8b0ae96c8f6600e8
+styles_hash: 4706312347e796d3

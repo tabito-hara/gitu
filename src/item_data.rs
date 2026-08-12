@@ -13,6 +13,7 @@ pub(crate) enum ItemData {
         kind: Ref,
         short_id: String,
         summary: String,
+        merge_status: Option<BranchMergeStatus>,
     },
     Commit {
         oid: String,
@@ -67,6 +68,12 @@ pub(crate) enum ItemData {
         commit_hash: String,
         file_path: String,
     },
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum BranchMergeStatus {
+    Merged,
+    Unmerged,
 }
 
 #[derive(Debug)]

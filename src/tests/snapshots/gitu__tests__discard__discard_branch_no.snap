@@ -4,12 +4,12 @@ assertion_line: 29
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
-▌  asd add initial-file                                                  b66a0bf|
- * main add initial-file                                                 b66a0bf|
+▌  asd merged add initial-file                                           b66a0bf|
+ * main merged add initial-file                                          b66a0bf|
                                                                                 |
  Remote origin                                                                  |
-   origin/HEAD add initial-file                                          b66a0bf|
-   origin/main add initial-file                                          b66a0bf|
+   origin/HEAD merged add initial-file                                   b66a0bf|
+   origin/main merged add initial-file                                   b66a0bf|
                                                                                 |
                                                                                 |
                                                                                 |
@@ -23,4 +23,4 @@ expression: ctx.redact_buffer()
                                                                                 |
                                                                                 |
                                                                                 |
-styles_hash: 4038f970c6fe9866
+styles_hash: d30af95bb1691c66

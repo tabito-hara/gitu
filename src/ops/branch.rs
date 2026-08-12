@@ -118,6 +118,11 @@ impl OpTrait for Delete {
         let default = target.rev();
 
         Some(Rc::new(move |app: &mut App, term: &mut Term| {
+            if let Some(branches) = app.screen().selected_branches() {
+                delete_many(app, term, &branches)?;
+                return Ok(());
+            }
+
             let result = app.pick(
                 term,
                 PickerState::with_branches(PickerParams {
@@ -144,23 +149,38 @@ impl OpTrait for Delete {
 }
 
 pub fn delete(app: &mut App, term: &mut Term, branch_name: &str) -> Res<()> {
-    if branch_name.is_empty() {
+    delete_many(app, term, &[branch_name.to_string()])
+}
+
+fn delete_many(app: &mut App, term: &mut Term, branch_names: &[String]) -> Res<()> {
+    if branch_names.is_empty() {
         return Err(Error::BranchNameRequired);
     }
 
-    if get_current_branch_name(&app.state.repo).unwrap() == branch_name {
-        return Err(Error::CannotDeleteCurrentBranch);
+    let current_branch = get_current_branch_name(&app.state.repo).unwrap();
+    for branch_name in branch_names {
+        if branch_name.is_empty() {
+            return Err(Error::BranchNameRequired);
+        }
+
+        if current_branch == *branch_name {
+            return Err(Error::CannotDeleteCurrentBranch);
+        }
     }
+
+    let has_unmerged_branch = branch_names
+        .iter()
+        .any(|branch_name| !is_branch_merged(&app.state.repo, branch_name).unwrap_or(false));
 
     let mut cmd = Command::new("git");
     cmd.args(["branch", "-d"]);
 
-    if !is_branch_merged(&app.state.repo, branch_name).unwrap_or(false) {
+    if has_unmerged_branch {
         app.confirm(term, "Branch is not fully merged. Really delete? (y or n)")?;
         cmd.arg("-f");
     }
 
-    cmd.arg(branch_name);
+    cmd.args(branch_names.iter().map(String::as_str));
 
     app.run_cmd(term, &[], cmd)?;
     Ok(())

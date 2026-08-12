@@ -4,11 +4,11 @@ assertion_line: 22
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
-▌* main add initial-file                                                 b66a0bf|
+▌* main merged add initial-file                                          b66a0bf|
                                                                                 |
  Remote origin                                                                  |
-   origin/HEAD add initial-file                                          b66a0bf|
-   origin/main add initial-file                                          b66a0bf|
+   origin/HEAD merged add initial-file                                   b66a0bf|
+   origin/main merged add initial-file                                   b66a0bf|
                                                                                 |
                                                                                 |
                                                                                 |
@@ -23,4 +23,4 @@ expression: ctx.redact_buffer()
 ────────────────────────────────────────────────────────────────────────────────|
 $ git branch -d asd                                                             |
 Deleted branch asd (was b66a0bf).                                               |
-styles_hash: d62ba1aaf9d149e8
+styles_hash: 505886c296c38b8c

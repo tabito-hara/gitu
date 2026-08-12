@@ -1,11 +1,10 @@
 ---
-source: src/tests/discard.rs
-assertion_line: 15
+source: src/tests/mod.rs
+assertion_line: 390
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
-▌  asd merged add initial-file                                           b66a0bf|
- * main merged add initial-file                                          b66a0bf|
+▌* main merged add initial-file                                          b66a0bf|
                                                                                 |
  Remote origin                                                                  |
    origin/HEAD merged add initial-file                                   b66a0bf|
@@ -20,7 +19,8 @@ expression: ctx.redact_buffer()
                                                                                 |
                                                                                 |
                                                                                 |
-                                                                                |
 ────────────────────────────────────────────────────────────────────────────────|
-? Really discard? (y or n) › █                                                  |
-styles_hash: e529ef3c34884e86
+$ git branch -d feature-a feature-b                                             |
+Deleted branch feature-a (was b66a0bf).                                         |
+Deleted branch feature-b (was b66a0bf).                                         |
+styles_hash: 922c4f8c2c8cfede

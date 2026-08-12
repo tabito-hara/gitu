@@ -1,16 +1,16 @@
 ---
 source: src/tests/discard.rs
-assertion_line: 134
+assertion_line: 181
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
- * main add initial-file                                                 b66a0bf|
-   merged add initial-file                                               b66a0bf|
-▌  unmerged add first commit                                             c84f226|
+ * main merged add initial-file                                          b66a0bf|
+   merged merged add initial-file                                        b66a0bf|
+▌  unmerged unmerged add first commit                                    c84f226|
                                                                                 |
  Remote origin                                                                  |
-   origin/HEAD add initial-file                                          b66a0bf|
-   origin/main add initial-file                                          b66a0bf|
+   origin/HEAD merged add initial-file                                   b66a0bf|
+   origin/main merged add initial-file                                   b66a0bf|
                                                                                 |
                                                                                 |
                                                                                 |
@@ -23,4 +23,4 @@ expression: ctx.redact_buffer()
                                                                                 |
 ────────────────────────────────────────────────────────────────────────────────|
 ? Branch is not fully merged. Really delete? (y or n) › █                       |
-styles_hash: 66728bbc4df9ec71
+styles_hash: 3cbb1bd1d430c0a0

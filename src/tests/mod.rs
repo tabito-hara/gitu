@@ -371,6 +371,24 @@ mod show_refs {
         run(&ctx.dir, &["git", "branch", "feature-a"]);
         snapshot!(ctx, "Yjbm<enter>feature-renamed<enter>");
     }
+
+    #[test]
+    fn show_refs_merged_status() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "merged"]);
+        run(&ctx.dir, &["git", "checkout", "-b", "unmerged"]);
+        commit(&ctx.dir, "unmerged commit", "");
+        run(&ctx.dir, &["git", "checkout", "main"]);
+        snapshot!(ctx, "Y");
+    }
+
+    #[test]
+    fn show_refs_delete_selected_branches() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        run(&ctx.dir, &["git", "branch", "feature-b"]);
+        snapshot!(ctx, "Yj<ctrl+space>jbk");
+    }
 }
 
 #[test]

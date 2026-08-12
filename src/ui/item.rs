@@ -5,7 +5,7 @@ use crate::style::Style;
 use crate::config::Config;
 use crate::gitu_diff::Status;
 use crate::highlight;
-use crate::item_data::{ItemData, Ref, SectionHeader};
+use crate::item_data::{BranchMergeStatus, ItemData, Ref, SectionHeader};
 use crate::items::Item;
 use crate::ui::layout::opts;
 use crate::ui::{UiTree, layout_span, layout_span_nowrap};
@@ -63,9 +63,17 @@ pub(crate) fn layout_item<'a>(
             prefix,
             short_id,
             summary,
+            merge_status,
         } => {
             layout_span(layout, ((*prefix).into(), base));
             layout_reference(layout, kind, config, base);
+            if let Some(merge_status) = merge_status {
+                let label = match merge_status {
+                    BranchMergeStatus::Merged => " merged",
+                    BranchMergeStatus::Unmerged => " unmerged",
+                };
+                layout_span(layout, (label.into(), base.patch(Style::from(&style.age))));
+            }
             layout.row(opts().fill_x(), |layout| {
                 if !summary.is_empty() {
                     layout_span(layout, (" ".into(), base));

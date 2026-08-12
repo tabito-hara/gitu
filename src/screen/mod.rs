@@ -3,7 +3,10 @@ use crate::git::diff::{Diff, DiffType};
 use crate::style::Style;
 use crate::ui::layout::{LayoutTree, opts};
 use crate::ui::{UiTree, layout_span};
-use crate::{item_data::ItemData, ui};
+use crate::{
+    item_data::{ItemData, Ref},
+    ui,
+};
 use itertools::Itertools;
 
 use crate::{Res, config::Config, items::hash};
@@ -549,6 +552,30 @@ impl Screen {
             None
         } else {
             Some(selection)
+        }
+    }
+
+    pub(crate) fn selected_branches(&self) -> Option<Vec<String>> {
+        let mark = self.mark?;
+        let start = mark.min(self.cursor);
+        let end = mark.max(self.cursor);
+        let mut branches = Vec::new();
+
+        for item in &self.items[start..=end] {
+            match &item.data {
+                ItemData::Raw(content) if content.is_empty() => {}
+                ItemData::Reference {
+                    kind: Ref::Head(branch),
+                    ..
+                } => branches.push(branch.clone()),
+                _ => return None,
+            }
+        }
+
+        if branches.is_empty() {
+            None
+        } else {
+            Some(branches)
         }
     }
 

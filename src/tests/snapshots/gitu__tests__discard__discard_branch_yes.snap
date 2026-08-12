@@ -1,13 +1,14 @@
 ---
 source: src/tests/discard.rs
+assertion_line: 22
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
-▌* main                                                                         |
+▌* main add initial-file                                                 b66a0bf|
                                                                                 |
  Remote origin                                                                  |
-   origin/HEAD                                                                  |
-   origin/main                                                                  |
+   origin/HEAD add initial-file                                          b66a0bf|
+   origin/main add initial-file                                          b66a0bf|
                                                                                 |
                                                                                 |
                                                                                 |
@@ -22,4 +23,4 @@ expression: ctx.redact_buffer()
 ────────────────────────────────────────────────────────────────────────────────|
 $ git branch -d asd                                                             |
 Deleted branch asd (was b66a0bf).                                               |
-styles_hash: ab0e1a16029dbb52
+styles_hash: d62ba1aaf9d149e8

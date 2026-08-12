@@ -357,6 +357,20 @@ mod show_refs {
         run(&ctx.dir, &["git", "tag", "v1.0"]);
         snapshot!(ctx, "Yjjjjjjbb<enter>Y");
     }
+
+    #[test]
+    fn show_refs_delete_selected_branch() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        snapshot!(ctx, "Yjbk<enter>");
+    }
+
+    #[test]
+    fn show_refs_rename_selected_branch() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        snapshot!(ctx, "Yjbm<enter>feature-renamed<enter>");
+    }
 }
 
 #[test]

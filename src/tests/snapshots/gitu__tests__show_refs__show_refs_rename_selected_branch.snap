@@ -1,10 +1,10 @@
 ---
-source: src/tests/discard.rs
-assertion_line: 29
+source: src/tests/mod.rs
+assertion_line: 372
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
-▌  asd add initial-file                                                  b66a0bf|
+▌  feature-renamed add initial-file                                      b66a0bf|
  * main add initial-file                                                 b66a0bf|
                                                                                 |
  Remote origin                                                                  |
@@ -21,6 +21,6 @@ expression: ctx.redact_buffer()
                                                                                 |
                                                                                 |
                                                                                 |
-                                                                                |
-                                                                                |
-styles_hash: 4038f970c6fe9866
+────────────────────────────────────────────────────────────────────────────────|
+$ git branch -m feature-a feature-renamed                                       |
+styles_hash: aab4cbe0c9988cfa

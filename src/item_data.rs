@@ -11,6 +11,8 @@ pub(crate) enum ItemData {
     Reference {
         prefix: &'static str,
         kind: Ref,
+        short_id: String,
+        summary: String,
     },
     Commit {
         oid: String,

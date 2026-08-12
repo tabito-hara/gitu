@@ -1,15 +1,16 @@
 ---
 source: src/tests/discard.rs
+assertion_line: 124
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
- * main                                                                         |
-▌  merged                                                                       |
-   unmerged                                                                     |
+ * main add initial-file                                                 b66a0bf|
+▌  merged add initial-file                                               b66a0bf|
+   unmerged add first commit                                             c84f226|
                                                                                 |
  Remote origin                                                                  |
-   origin/HEAD                                                                  |
-   origin/main                                                                  |
+   origin/HEAD add initial-file                                          b66a0bf|
+   origin/main add initial-file                                          b66a0bf|
                                                                                 |
                                                                                 |
                                                                                 |
@@ -22,4 +23,4 @@ expression: ctx.redact_buffer()
                                                                                 |
 ────────────────────────────────────────────────────────────────────────────────|
 ? Really discard? (y or n) › █                                                  |
-styles_hash: 7ee167ab1e7e41ed
+styles_hash: a2c3a454567562d9

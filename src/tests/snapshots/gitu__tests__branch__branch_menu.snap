@@ -1,5 +1,6 @@
 ---
 source: src/tests/branch.rs
+assertion_line: 135
 expression: ctx.redact_buffer()
 ---
 ▌On branch main                                                                 |
@@ -19,7 +20,7 @@ expression: ctx.redact_buffer()
  b     Checkout branch/revision                                                 |
  c     Checkout new branch                                                      |
  s     Spinoff branch                                                           |
- K     Delete branch                                                            |
+ k/K   Delete branch                                                            |
  m     Rename branch                                                            |
  q/esc Quit/Close                                                               |
-styles_hash: 932fdf42b6b7789f
+styles_hash: e5af248fdfd5e1f4

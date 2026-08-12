@@ -1,14 +1,15 @@
 ---
 source: src/tests/discard.rs
+assertion_line: 129
 expression: ctx.redact_buffer()
 ---
  Branches                                                                       |
- * main                                                                         |
-▌  unmerged                                                                     |
+ * main add initial-file                                                 b66a0bf|
+▌  unmerged add first commit                                             c84f226|
                                                                                 |
  Remote origin                                                                  |
-   origin/HEAD                                                                  |
-   origin/main                                                                  |
+   origin/HEAD add initial-file                                          b66a0bf|
+   origin/main add initial-file                                          b66a0bf|
                                                                                 |
                                                                                 |
                                                                                 |
@@ -22,4 +23,4 @@ expression: ctx.redact_buffer()
 ────────────────────────────────────────────────────────────────────────────────|
 $ git branch -d merged                                                          |
 Deleted branch merged (was b66a0bf).                                            |
-styles_hash: 99db55147303043e
+styles_hash: 48edd4e473c7d12b

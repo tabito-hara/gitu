@@ -26,7 +26,11 @@ pub(crate) fn create(config: Arc<Config>, repo: Rc<Repository>, size: (u16, u16)
                 depth: 0,
                 ..Default::default()
             })
-            .chain(create_reference_items(&repo, Reference::is_branch)?.map(|(_, item)| item))
+            .chain(
+                create_reference_items(&repo, |reference| reference.is_branch())?
+                    .into_iter()
+                    .map(|(_, item)| item),
+            )
             .chain(create_remotes_sections(&repo)?)
             .chain(create_tags_section(&repo)?)
             .collect())
@@ -34,8 +38,8 @@ pub(crate) fn create(config: Arc<Config>, repo: Rc<Repository>, size: (u16, u16)
     )
 }
 
-fn create_remotes_sections<'a>(repo: &'a Repository) -> Res<impl Iterator<Item = Item> + 'a> {
-    let all_remotes = create_reference_items(repo, Reference::is_remote)?;
+fn create_remotes_sections(repo: &Repository) -> Res<impl Iterator<Item = Item>> {
+    let all_remotes = create_reference_items(repo, |reference| reference.is_remote())?;
     let mut remotes = BTreeMap::new();
     for (name, remote) in all_remotes {
         let name =
@@ -67,9 +71,9 @@ fn create_remotes_sections<'a>(repo: &'a Repository) -> Res<impl Iterator<Item =
     }))
 }
 
-fn create_tags_section<'a>(repo: &'a Repository) -> Res<impl Iterator<Item = Item> + 'a> {
-    let mut tags = create_reference_items(repo, Reference::is_tag)?;
-    Ok(match tags.next() {
+fn create_tags_section(repo: &Repository) -> Res<impl Iterator<Item = Item>> {
+    let tags = create_reference_items(repo, |reference| reference.is_tag())?;
+    Ok(match tags.first().cloned() {
         Some((_name, item)) => vec![
             items::blank_line(),
             Item {
@@ -83,17 +87,14 @@ fn create_tags_section<'a>(repo: &'a Repository) -> Res<impl Iterator<Item = Ite
         None => vec![],
     }
     .into_iter()
-    .chain(tags.map(|(_name, item)| item)))
+    .chain(tags.into_iter().skip(1).map(|(_name, item)| item)))
 }
 
-fn create_reference_items<'a, F>(
-    repo: &'a Repository,
-    filter: F,
-) -> Res<impl Iterator<Item = (String, Item)> + 'a>
+fn create_reference_items<F>(repo: &Repository, filter: F) -> Res<Vec<(String, Item)>>
 where
-    F: FnMut(&Reference<'a>) -> bool + 'a,
+    F: FnMut(&Reference<'_>) -> bool,
 {
-    Ok(repo
+    let mut refs = repo
         .references()
         .map_err(Error::ListGitReferences)?
         .filter_map(Result::ok)
@@ -105,6 +106,7 @@ where
             };
 
             let prefix = create_prefix(repo, &reference);
+            let (short_id, summary) = create_tip_info(&reference);
 
             let item = Item {
                 id: hash(&name),
@@ -112,11 +114,16 @@ where
                 data: ItemData::Reference {
                     prefix,
                     kind: ref_kind,
+                    short_id,
+                    summary,
                 },
                 ..Default::default()
             };
             (name, item)
-        }))
+        })
+        .collect::<Vec<_>>();
+    refs.sort_by(|(left, _), (right, _)| left.cmp(right));
+    Ok(refs)
 }
 
 fn create_prefix(repo: &Repository, reference: &Reference) -> &'static str {
@@ -135,4 +142,19 @@ fn create_prefix(repo: &Repository, reference: &Reference) -> &'static str {
     }
 
     "  "
+}
+
+fn create_tip_info(reference: &Reference) -> (String, String) {
+    let Ok(commit) = reference.peel_to_commit() else {
+        return (String::new(), String::new());
+    };
+
+    let short_id = commit
+        .as_object()
+        .short_id()
+        .map(|buf| String::from_utf8_lossy(&buf).to_string())
+        .unwrap_or_default();
+    let summary = commit.summary().unwrap_or("").to_string();
+
+    (short_id, summary)
 }

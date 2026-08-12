@@ -58,9 +58,30 @@ pub(crate) fn layout_item<'a>(
                 ),
             );
         }
-        ItemData::Reference { kind, prefix } => {
+        ItemData::Reference {
+            kind,
+            prefix,
+            short_id,
+            summary,
+        } => {
             layout_span(layout, ((*prefix).into(), base));
             layout_reference(layout, kind, config, base);
+            layout.row(opts().fill_x(), |layout| {
+                if !summary.is_empty() {
+                    layout_span(layout, (" ".into(), base));
+                    layout_span(layout, (summary.as_str().into(), base));
+                }
+            });
+            if !short_id.is_empty() {
+                layout_span(layout, (" ".into(), base));
+                layout_span(
+                    layout,
+                    (
+                        short_id.as_str().into(),
+                        base.patch(Style::from(&style.hash)),
+                    ),
+                );
+            }
         }
         ItemData::Commit {
             short_id,

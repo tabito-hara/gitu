@@ -1,0 +1,26 @@
+---
+source: src/tests/mod.rs
+assertion_line: 442
+expression: ctx.redact_buffer()
+---
+ Branches                                                                       |
+   feature-a merged add initial-file                                     b66a0bf|
+   feature-b merged add initial-file                                     b66a0bf|
+▌* main merged add initial-file                                          b66a0bf|
+                                                                                |
+ Remote origin                                                                  |
+   origin/HEAD merged add initial-file                                   b66a0bf|
+   origin/main merged add initial-file                                   b66a0bf|
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+styles_hash: 5d596b6272049474

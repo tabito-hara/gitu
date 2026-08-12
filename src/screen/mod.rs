@@ -469,7 +469,10 @@ impl Screen {
 
     pub(crate) fn clear_mark(&mut self) {
         self.mark = None;
-        self.delete_marked_branches.clear();
+    }
+
+    pub(crate) fn mark_branches_for_delete(&mut self, branches: &[String]) {
+        self.delete_marked_branches.extend(branches.iter().cloned());
     }
 
     pub(crate) fn mark_selected_branch_for_delete(&mut self) -> bool {
@@ -483,6 +486,24 @@ impl Screen {
 
         self.delete_marked_branches.insert(branch.clone());
         true
+    }
+
+    pub(crate) fn unmark_branch_for_delete(&mut self, branch: &str) -> bool {
+        self.delete_marked_branches.remove(branch)
+    }
+
+    pub(crate) fn unmark_branches_for_delete(&mut self, branches: &[String]) {
+        for branch in branches {
+            self.delete_marked_branches.remove(branch);
+        }
+    }
+
+    pub(crate) fn clear_delete_marks(&mut self) {
+        self.delete_marked_branches.clear();
+    }
+
+    pub(crate) fn has_delete_marks(&self) -> bool {
+        !self.delete_marked_branches.is_empty()
     }
 
     pub(crate) fn delete_marked_branches(&self) -> Vec<String> {

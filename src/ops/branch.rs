@@ -163,6 +163,12 @@ impl OpTrait for MarkDelete {
         }
 
         Some(Rc::new(move |app: &mut App, _term: &mut Term| {
+            if let Some(branches) = app.screen().selected_branches() {
+                app.screen_mut().mark_branches_for_delete(&branches);
+                app.screen_mut().clear_mark();
+                return Ok(());
+            }
+
             if app.screen_mut().mark_selected_branch_for_delete() {
                 app.screen_mut().select_next(NavMode::Normal);
             }
@@ -185,8 +191,10 @@ impl OpTrait for ExecuteDeletes {
         Some(Rc::new(move |app: &mut App, term: &mut Term| {
             let branches = app.screen().delete_marked_branches();
             if !branches.is_empty() {
+                app.confirm(term, "Really delete marked branches? (y or n)")?;
                 delete_many(app, term, &branches)?;
                 app.screen_mut().clear_mark();
+                app.screen_mut().clear_delete_marks();
             }
             Ok(())
         }))

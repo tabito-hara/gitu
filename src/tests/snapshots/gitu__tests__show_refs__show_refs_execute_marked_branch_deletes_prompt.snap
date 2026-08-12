@@ -1,0 +1,26 @@
+---
+source: src/tests/mod.rs
+assertion_line: 450
+expression: ctx.redact_buffer()
+---
+ Branches                                                                       |
+D  feature-a merged add initial-file                                     b66a0bf|
+D  feature-b merged add initial-file                                     b66a0bf|
+▌* main merged add initial-file                                          b66a0bf|
+                                                                                |
+ Remote origin                                                                  |
+   origin/HEAD merged add initial-file                                   b66a0bf|
+   origin/main merged add initial-file                                   b66a0bf|
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+────────────────────────────────────────────────────────────────────────────────|
+? Really delete marked branches? (y or n) › █                                   |
+styles_hash: 6eb6c3838adf28a3

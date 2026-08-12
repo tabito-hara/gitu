@@ -1,0 +1,26 @@
+---
+source: src/tests/mod.rs
+assertion_line: 434
+expression: ctx.redact_buffer()
+---
+ Branches                                                                       |
+D  feature-a merged add initial-file                                     b66a0bf|
+▌* main merged add initial-file                                          b66a0bf|
+                                                                                |
+ Remote origin                                                                  |
+   origin/HEAD merged add initial-file                                   b66a0bf|
+   origin/main merged add initial-file                                   b66a0bf|
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+────────────────────────────────────────────────────────────────────────────────|
+? Really unmark all branches? (y or n) › █                                      |
+styles_hash: c2558b0ca7f7b625

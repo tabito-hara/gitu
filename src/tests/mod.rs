@@ -398,11 +398,64 @@ mod show_refs {
     }
 
     #[test]
-    fn show_refs_execute_marked_branch_deletes() {
+    fn show_refs_unmark_branch_for_delete() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        snapshot!(ctx, "Yjdku");
+    }
+
+    #[test]
+    fn show_refs_clear_mark_keeps_delete_mark() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        snapshot!(ctx, "Yjd<ctrl+g>");
+    }
+
+    #[test]
+    fn show_refs_mark_selected_branches_for_delete() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        run(&ctx.dir, &["git", "branch", "feature-b"]);
+        snapshot!(ctx, "Yj<ctrl+space>jd");
+    }
+
+    #[test]
+    fn show_refs_unmark_selected_branches_for_delete() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        run(&ctx.dir, &["git", "branch", "feature-b"]);
+        snapshot!(ctx, "Yjddk<ctrl+space>ku");
+    }
+
+    #[test]
+    fn show_refs_unmark_all_delete_marks_prompt() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        snapshot!(ctx, "YjdU");
+    }
+
+    #[test]
+    fn show_refs_unmark_all_delete_marks() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        run(&ctx.dir, &["git", "branch", "feature-b"]);
+        snapshot!(ctx, "YjddUy");
+    }
+
+    #[test]
+    fn show_refs_execute_marked_branch_deletes_prompt() {
         let ctx = setup_clone!();
         run(&ctx.dir, &["git", "branch", "feature-a"]);
         run(&ctx.dir, &["git", "branch", "feature-b"]);
         snapshot!(ctx, "Yjddx");
+    }
+
+    #[test]
+    fn show_refs_execute_marked_branch_deletes() {
+        let ctx = setup_clone!();
+        run(&ctx.dir, &["git", "branch", "feature-a"]);
+        run(&ctx.dir, &["git", "branch", "feature-b"]);
+        snapshot!(ctx, "Yjddxy");
     }
 }
 

@@ -1,11 +1,11 @@
-use super::OpTrait;
+use super::{OpTrait, confirm};
 use crate::{
     Action,
     app::{App, State},
     git::{self, diff::PatchMode},
     gitu_diff::Status,
-    item_data::ItemData,
-    screen::{FileSelection, HunkLineSelection},
+    item_data::{ItemData, Ref},
+    screen::{FileSelection, HunkLineSelection, NavMode},
     term::Term,
 };
 use std::{path::PathBuf, process::Command, rc::Rc};
@@ -16,6 +16,11 @@ impl OpTrait for Unstage {
         let target = target.clone();
         target_unstage_action(&target).map(|mut target_action| {
             Rc::new(move |app: &mut App, term: &mut Term| {
+                if let Some(selection) = app.screen().selected_branches() {
+                    app.screen_mut().unmark_branches_for_delete(&selection);
+                    app.screen_mut().clear_mark();
+                    return Ok(());
+                }
                 if let Some(selection) = app.screen().selected_hunk_line_range() {
                     app.screen_mut().clear_mark();
                     let mut action = unstage_line_range(selection);
@@ -70,6 +75,10 @@ fn target_unstage_action(target: &ItemData) -> Option<Action> {
             diff.format_line_patch(*file_i, *hunk_i, *line_i..(*line_i + 1), PatchMode::Reverse)
                 .into_bytes(),
         ),
+        ItemData::Reference {
+            kind: Ref::Head(branch),
+            ..
+        } => unmark_branch_for_delete(branch.clone()),
         _ => return None,
     };
 
@@ -79,7 +88,17 @@ fn target_unstage_action(target: &ItemData) -> Option<Action> {
 pub(crate) struct UnstageAll;
 impl OpTrait for UnstageAll {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {
-        Some(unstage_staged())
+        Some(Rc::new(move |app: &mut App, term: &mut Term| {
+            if app.screen().has_delete_marks() {
+                confirm(app, term, "Really unmark all branches? (y or n)")?;
+                app.screen_mut().clear_mark();
+                app.screen_mut().clear_delete_marks();
+                return Ok(());
+            }
+
+            let mut action = unstage_staged();
+            Rc::get_mut(&mut action).unwrap()(app, term)
+        }))
     }
 
     fn display(&self, _state: &State) -> String {
@@ -93,6 +112,15 @@ fn unstage_staged() -> Action {
         cmd.args(["reset", "HEAD", "--"]);
 
         app.run_cmd(term, &[], cmd)
+    })
+}
+
+fn unmark_branch_for_delete(branch: String) -> Action {
+    Rc::new(move |app: &mut App, _term: &mut Term| {
+        if app.screen_mut().unmark_branch_for_delete(&branch) {
+            app.screen_mut().select_next(NavMode::Normal);
+        }
+        Ok(())
     })
 }
 

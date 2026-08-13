@@ -234,6 +234,82 @@ impl Screen {
         Ok(())
     }
 
+    pub(crate) fn cycle_all_sections(&mut self) -> Res<()> {
+        let top_level_sections = self
+            .items
+            .iter()
+            .enumerate()
+            .filter(|(_, item)| item.depth == 0 && item.data.is_section())
+            .map(|(item_i, _)| item_i)
+            .collect::<Vec<_>>();
+
+        if top_level_sections
+            .iter()
+            .any(|&item_i| self.is_collapsed(&self.items[item_i]))
+            && top_level_sections
+                .iter()
+                .any(|&item_i| self.has_child_section(item_i))
+        {
+            self.show_section_headings();
+        } else if top_level_sections
+            .iter()
+            .any(|&item_i| self.has_collapsed_section_in_subtree(item_i))
+        {
+            self.collapsed.clear();
+        } else {
+            self.collapsed.extend(
+                top_level_sections
+                    .iter()
+                    .map(|&item_i| self.items[item_i].id),
+            );
+        }
+
+        self.update_indices()?;
+        self.update_cursor();
+        Ok(())
+    }
+
+    fn show_section_headings(&mut self) {
+        let top_level_ids = self
+            .items
+            .iter()
+            .filter(|item| item.depth == 0 && item.data.is_section())
+            .map(|item| item.id)
+            .collect::<HashSet<_>>();
+
+        let collapsed = (0..self.items.len())
+            .filter(|&item_i| {
+                self.items[item_i].depth > 0
+                    && self.items[item_i].data.is_section()
+                    && !top_level_ids.contains(&self.items[item_i].id)
+                    && !self.has_child_section(item_i)
+            })
+            .map(|item_i| self.items[item_i].id)
+            .collect();
+        self.collapsed = collapsed;
+    }
+
+    fn has_child_section(&self, item_i: usize) -> bool {
+        let depth = self.items[item_i].depth;
+        self.items
+            .iter()
+            .skip(item_i + 1)
+            .take_while(|item| item.depth > depth)
+            .any(|item| item.data.is_section())
+    }
+
+    fn has_collapsed_section_in_subtree(&self, item_i: usize) -> bool {
+        let depth = self.items[item_i].depth;
+        std::iter::once(&self.items[item_i])
+            .chain(
+                self.items
+                    .iter()
+                    .skip(item_i + 1)
+                    .take_while(|item| item.depth > depth),
+            )
+            .any(|item| item.data.is_section() && self.is_collapsed(item))
+    }
+
     pub(crate) fn refresh(&mut self) -> Res<()> {
         self.items = (self.refresh_items)()?;
         self.update_indices()?;

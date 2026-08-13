@@ -373,6 +373,12 @@ mod show_refs {
     }
 
     #[test]
+    fn show_refs_collapse_all_sections() {
+        let ctx = setup_clone!();
+        snapshot!(ctx, &format!("Y{COLLAPSE_ALL}"));
+    }
+
+    #[test]
     fn show_refs_merged_status() {
         let ctx = setup_clone!();
         run(&ctx.dir, &["git", "branch", "merged"]);
@@ -493,6 +499,53 @@ fn go_down_past_collapsed() {
     fs::write(ctx.dir.join("file-two"), "blahonga\n").unwrap();
 
     snapshot!(ctx, "jjj");
+}
+
+#[test]
+fn cycle_all_sections_to_expanded_from_initial() {
+    let ctx = setup_clone!();
+    commit(&ctx.dir, "file-one", "asdf\nblahonga\n");
+    commit(&ctx.dir, "file-two", "FOO\nBAR\n");
+    fs::write(ctx.dir.join("file-one"), "blahonga\n").unwrap();
+    fs::write(ctx.dir.join("file-two"), "blahonga\n").unwrap();
+
+    snapshot!(ctx, COLLAPSE_ALL);
+}
+
+#[test]
+fn cycle_all_sections_to_collapsed() {
+    let ctx = setup_clone!();
+    commit(&ctx.dir, "file-one", "asdf\nblahonga\n");
+    commit(&ctx.dir, "file-two", "FOO\nBAR\n");
+    fs::write(ctx.dir.join("file-one"), "blahonga\n").unwrap();
+    fs::write(ctx.dir.join("file-two"), "blahonga\n").unwrap();
+
+    snapshot!(ctx, &format!("{COLLAPSE_ALL}{COLLAPSE_ALL}"));
+}
+
+#[test]
+fn cycle_all_sections_to_headings() {
+    let ctx = setup_clone!();
+    commit(&ctx.dir, "file-one", "asdf\nblahonga\n");
+    commit(&ctx.dir, "file-two", "FOO\nBAR\n");
+    fs::write(ctx.dir.join("file-one"), "blahonga\n").unwrap();
+    fs::write(ctx.dir.join("file-two"), "blahonga\n").unwrap();
+
+    snapshot!(ctx, &format!("{COLLAPSE_ALL}{COLLAPSE_ALL}{COLLAPSE_ALL}"));
+}
+
+#[test]
+fn cycle_all_sections_from_headings_to_expanded() {
+    let ctx = setup_clone!();
+    commit(&ctx.dir, "file-one", "asdf\nblahonga\n");
+    commit(&ctx.dir, "file-two", "FOO\nBAR\n");
+    fs::write(ctx.dir.join("file-one"), "blahonga\n").unwrap();
+    fs::write(ctx.dir.join("file-two"), "blahonga\n").unwrap();
+
+    snapshot!(
+        ctx,
+        &format!("{COLLAPSE_ALL}{COLLAPSE_ALL}{COLLAPSE_ALL}{COLLAPSE_ALL}")
+    );
 }
 
 #[test]

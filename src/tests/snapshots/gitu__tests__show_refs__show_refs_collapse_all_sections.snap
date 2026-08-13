@@ -1,0 +1,26 @@
+---
+source: src/tests/mod.rs
+assertion_line: 378
+expression: ctx.redact_buffer()
+---
+▌Branches…                                                                      |
+                                                                                |
+ Remote origin…                                                                 |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+styles_hash: 3f69186c82279c13

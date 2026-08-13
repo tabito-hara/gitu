@@ -119,6 +119,7 @@ pub(crate) enum Op {
     Blame,
 
     ToggleSection,
+    CollapseAll,
     MoveUp,
     MoveDown,
     MoveUpLine,
@@ -154,6 +155,7 @@ impl Op {
             Op::Refresh => Box::new(editor::Refresh),
             Op::ToggleArg(name) => Box::new(editor::ToggleArg(name)),
             Op::ToggleSection => Box::new(editor::ToggleSection),
+            Op::CollapseAll => Box::new(editor::CollapseAll),
             Op::MoveDown => Box::new(editor::MoveDown),
             Op::MoveUp => Box::new(editor::MoveUp),
             Op::MoveDownLine => Box::new(editor::MoveDownLine),

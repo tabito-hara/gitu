@@ -11,3 +11,4 @@
 pub const HELP: &str = "h";
 pub const REFRESH: &str = "gr";
 pub const HALF_PAGE_DOWN: &str = "<ctrl+d>";
+pub const COLLAPSE_ALL: &str = "<backtab>";

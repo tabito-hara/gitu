@@ -9,18 +9,18 @@ expression: ctx.redact_buffer()
  Y                Show Refs                c   Commit                           |
  S                Stage all modified       f   Fetch                            |
  U                Unstage all              h/? Help                             |
- k/up             Up                       l   Log                              |
- j/down           Down                     m   Merge                            |
- ctrl+k/ctrl+up   Up line                  M   Remote                           |
- ctrl+j/ctrl+down Down line                F   Pull                             |
- alt+k/alt+up     Prev section             P   Push                             |
- alt+j/alt+down   Next section             r   Rebase                           |
- alt+h/alt+left   Parent section           X   Reset                            |
- g+g              Top                      V   Revert                           |
- G                Bottom                   A   Cherry-pick                      |
- ctrl+u           Scroll half page up      z   Stash                            |
+ backtab          Cycle all                l   Log                              |
+ k/up             Up                       m   Merge                            |
+ j/down           Down                     M   Remote                           |
+ ctrl+k/ctrl+up   Up line                  F   Pull                             |
+ ctrl+j/ctrl+down Down line                P   Push                             |
+ alt+k/alt+up     Prev section             r   Rebase                           |
+ alt+j/alt+down   Next section             X   Reset                            |
+ alt+h/alt+left   Parent section           V   Revert                           |
+ g+g              Top                      A   Cherry-pick                      |
+ G                Bottom                   z   Stash                            |
+ ctrl+u           Scroll half page up                                           |
  ctrl+d           Scroll half page down                                         |
  ctrl+space       Set mark                                                      |
  ctrl+g           Clear mark                                                    |
- g+r              Refresh                                                       |
-styles_hash: 3f96d55d7f36edbd
+styles_hash: dae6284f0e204681

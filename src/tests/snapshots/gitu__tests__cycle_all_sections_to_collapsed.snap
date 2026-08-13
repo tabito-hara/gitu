@@ -1,0 +1,26 @@
+---
+source: src/tests/mod.rs
+assertion_line: 523
+expression: ctx.redact_buffer()
+---
+▌On branch main…                                                                |
+                                                                                |
+ Unstaged changes (2)…                                                          |
+                                                                                |
+ Recent commits…                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+styles_hash: f1921a4656783dc6

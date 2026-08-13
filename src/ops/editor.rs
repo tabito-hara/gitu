@@ -226,6 +226,20 @@ impl OpTrait for MoveToScreenLine {
     }
 }
 
+pub(crate) struct CollapseAll;
+impl OpTrait for CollapseAll {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, _term| {
+            app.screen_mut().cycle_all_sections()?;
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Cycle all".into()
+    }
+}
+
 pub(crate) struct SetMark;
 impl OpTrait for SetMark {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {

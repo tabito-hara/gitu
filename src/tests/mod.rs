@@ -21,6 +21,7 @@ mod commit;
 mod discard;
 mod editor;
 mod fetch;
+mod gitignore;
 mod keys;
 mod log;
 mod merge;

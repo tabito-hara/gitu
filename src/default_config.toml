@@ -255,6 +255,13 @@ fetch_menu.fetch_elsewhere = ["e"]
 fetch_menu.fetch_push_remote = ["p"]
 fetch_menu.fetch_upstream = ["u"]
 
+root.gitignore_menu = ["i"]
+gitignore_menu.gitignore_in_topdir = ["t"]
+gitignore_menu.gitignore_in_subdir = ["s"]
+gitignore_menu.gitignore_in_gitdir = ["p"]
+gitignore_menu.gitignore_on_system = ["g"]
+gitignore_menu.quit = ["q", "esc"]
+
 root.log_menu = ["l"]
 log_menu.log_current = ["l"]
 log_menu.log_other = ["o"]

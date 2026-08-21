@@ -25,6 +25,9 @@ pub(crate) enum Menu {
     #[serde(rename = "fetch_menu")]
     #[strum(serialize = "fetch_menu")]
     Fetch,
+    #[serde(rename = "gitignore_menu")]
+    #[strum(serialize = "gitignore_menu")]
+    Gitignore,
     #[serde(rename = "help_menu")]
     #[strum(serialize = "help_menu")]
     Help,
@@ -75,6 +78,7 @@ impl PendingMenu {
                 Menu::Branch => ops::branch::init_args(),
                 Menu::Commit => ops::commit::init_args(),
                 Menu::Fetch => ops::fetch::init_args(),
+                Menu::Gitignore => vec![],
                 Menu::Help => vec![],
                 Menu::Log => ops::log::init_args(),
                 Menu::Merge => ops::merge::init_args(),

@@ -41,6 +41,10 @@ pub enum Error {
     FindGitRev(git2::Error),
     NoEditorSet,
     GitStatus(git2::Error),
+    Gitignore(io::Error),
+    GitignoreConfig(io::Error),
+    GitignoreConfigUtf8(string::FromUtf8Error),
+    GitignoreConfigUnset,
     CmdAlreadyRunning,
     StashWorkTreeEmpty,
     CouldntAwaitCmd(io::Error),
@@ -134,6 +138,14 @@ impl Display for Error {
                 crate::ops::show::EDITOR_VARS.join(", ")
             )),
             Error::GitStatus(e) => f.write_fmt(format_args!("Git status error: {e}")),
+            Error::Gitignore(e) => f.write_fmt(format_args!("Gitignore error: {e}")),
+            Error::GitignoreConfig(e) => {
+                f.write_fmt(format_args!("Couldn't read gitignore config: {e}"))
+            }
+            Error::GitignoreConfigUtf8(e) => {
+                f.write_fmt(format_args!("Gitignore config is not valid UTF-8: {e}"))
+            }
+            Error::GitignoreConfigUnset => f.write_str("core.excludesFile is not set"),
             Error::CmdAlreadyRunning => f.write_str("A command is already running"),
             Error::StashWorkTreeEmpty => f.write_str("Cannot stash: working tree is empty"),
             Error::CouldntAwaitCmd(e) => f.write_fmt(format_args!("Couldn't await command: {e}")),

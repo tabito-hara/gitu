@@ -18,6 +18,7 @@ pub(crate) mod copy_hash;
 pub(crate) mod discard;
 pub(crate) mod editor;
 pub(crate) mod fetch;
+pub(crate) mod gitignore;
 pub(crate) mod log;
 pub(crate) mod merge;
 pub(crate) mod pull;
@@ -68,6 +69,10 @@ pub(crate) enum Op {
     FetchPushRemote,
     FetchUpstream,
     FetchElsewhere,
+    GitignoreInTopdir,
+    GitignoreInSubdir,
+    GitignoreInGitdir,
+    GitignoreOnSystem,
     LogCurrent,
     PullFromPushRemote,
     PullFromUpstream,
@@ -187,6 +192,10 @@ impl Op {
             Op::FetchElsewhere => Box::new(fetch::FetchElsewhere),
             Op::FetchPushRemote => Box::new(fetch::FetchPushRemote),
             Op::FetchUpstream => Box::new(fetch::FetchUpstream),
+            Op::GitignoreInTopdir => Box::new(gitignore::GitignoreInTopdir),
+            Op::GitignoreInSubdir => Box::new(gitignore::GitignoreInSubdir),
+            Op::GitignoreInGitdir => Box::new(gitignore::GitignoreInGitdir),
+            Op::GitignoreOnSystem => Box::new(gitignore::GitignoreOnSystem),
             Op::LogCurrent => Box::new(log::LogCurrent),
             Op::PullFromPushRemote => Box::new(pull::PullFromPushRemote),
             Op::PullFromUpstream => Box::new(pull::PullFromUpstream),
@@ -249,6 +258,7 @@ impl Display for Menu {
             Menu::Branch => "Branch",
             Menu::Commit => "Commit",
             Menu::Fetch => "Fetch",
+            Menu::Gitignore => "Gitignore",
             Menu::Help => "Help",
             Menu::Log => "Log",
             Menu::Merge => "Merge",

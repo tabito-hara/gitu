@@ -1,0 +1,25 @@
+---
+source: src/tests/gitignore.rs
+expression: ctx.redact_buffer()
+---
+▌On branch main                                                                 |
+▌Your branch is up to date with 'origin/main'.                                  |
+                                                                                |
+ Recent commits                                                                 |
+ b66a0bf main origin/main add initial-file                       Author Name __ |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+────────────────────────────────────────────────────────────────────────────────|
+ Gitignore                                                                      |
+ t     shared at top level (.gitignore)                                         |
+ s     shared in subdirectory (path/to/.gitignore)                              |
+ p     private for this repository (.git/info/exclude)                          |
+ g     private for all repositories (core.excludesFile)                         |
+ q/esc Quit/Close                                                               |
+styles_hash: 1f6812172c67399c

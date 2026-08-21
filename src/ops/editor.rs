@@ -268,6 +268,80 @@ impl OpTrait for ClearMark {
     }
 }
 
+pub(crate) struct Search;
+impl OpTrait for Search {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, term| {
+            let default = app.state.search.clone();
+            let pattern = app.prompt(
+                term,
+                &PromptParams {
+                    prompt: "/",
+                    create_default_value: Box::new(move |_| default.clone()),
+                    ..Default::default()
+                },
+            )?;
+
+            if pattern.is_empty() {
+                return Ok(());
+            }
+
+            app.state.search = Some(pattern.clone());
+            if !app.screen_mut().select_next_search_match(&pattern) {
+                app.display_info(format!("No matches for {pattern}"));
+            }
+
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Search".into()
+    }
+}
+
+pub(crate) struct SearchNext;
+impl OpTrait for SearchNext {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, _term| {
+            let Some(pattern) = app.state.search.clone() else {
+                return Ok(());
+            };
+
+            if !app.screen_mut().select_next_search_match(&pattern) {
+                app.display_info(format!("No matches for {pattern}"));
+            }
+
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Next search match".into()
+    }
+}
+
+pub(crate) struct SearchPrevious;
+impl OpTrait for SearchPrevious {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, _term| {
+            let Some(pattern) = app.state.search.clone() else {
+                return Ok(());
+            };
+
+            if !app.screen_mut().select_previous_search_match(&pattern) {
+                app.display_info(format!("No matches for {pattern}"));
+            }
+
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Previous search match".into()
+    }
+}
+
 pub(crate) struct MoveNextSection;
 impl OpTrait for MoveNextSection {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {

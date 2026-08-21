@@ -1,6 +1,6 @@
 use std::{ops::Range, path::PathBuf, rc::Rc};
 
-use crate::{Res, error::Error, git::diff::Diff, highlight::BlameHighlights};
+use crate::{Res, error::Error, git::diff::Diff, gitu_diff::Status, highlight::BlameHighlights};
 
 #[derive(Clone, Debug)]
 pub(crate) enum ItemData {
@@ -111,6 +111,135 @@ impl ItemData {
             ItemData::BlameHeader { commit_hash, .. }
             | ItemData::BlameCodeLine { commit_hash, .. } => Some(Rev::Commit(commit_hash.clone())),
             _ => None,
+        }
+    }
+
+    pub(crate) fn display_text(&self) -> String {
+        match self {
+            ItemData::Raw(content) => content.clone(),
+            ItemData::AllUnstaged(count) => format!("Unstaged changes ({count})"),
+            ItemData::AllStaged(count) => format!("Staged changes ({count})"),
+            ItemData::AllUntracked(_) => "Untracked files".into(),
+            ItemData::Reference {
+                kind,
+                prefix,
+                short_id,
+                summary,
+                merge_status,
+            } => {
+                let mut text = format!("{prefix}{}", kind.shorthand());
+                if let Some(merge_status) = merge_status {
+                    text.push_str(match merge_status {
+                        BranchMergeStatus::Merged => " merged",
+                        BranchMergeStatus::Unmerged => " unmerged",
+                    });
+                }
+                if !summary.is_empty() {
+                    text.push(' ');
+                    text.push_str(summary);
+                }
+                if !short_id.is_empty() {
+                    text.push(' ');
+                    text.push_str(short_id);
+                }
+                text
+            }
+            ItemData::Commit {
+                short_id,
+                associated_references,
+                summary,
+                author,
+                age,
+                ..
+            } => {
+                let refs = associated_references
+                    .iter()
+                    .map(Ref::shorthand)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                format!("{short_id} {refs} {summary} {author} {age}")
+            }
+            ItemData::Untracked(path) => path.to_string_lossy().into_owned(),
+            ItemData::Delta { diff, file_i, .. } => {
+                let file_diff = &diff.file_diffs[*file_i];
+                let path = match file_diff.header.status {
+                    Status::Renamed | Status::Copied => format!(
+                        "{} -> {}",
+                        file_diff.header.old_file.fmt(&diff.text),
+                        file_diff.header.new_file.fmt(&diff.text)
+                    ),
+                    Status::Deleted => file_diff.header.old_file.fmt(&diff.text).to_string(),
+                    _ => file_diff.header.new_file.fmt(&diff.text).to_string(),
+                };
+
+                format!(
+                    "{:8}   {path}",
+                    format!("{:?}", file_diff.header.status).to_lowercase()
+                )
+            }
+            ItemData::Hunk {
+                diff,
+                file_i,
+                hunk_i,
+            } => {
+                let hunk = &diff.file_diffs[*file_i].hunks[*hunk_i];
+                diff.text[hunk.header.range.clone()].to_string()
+            }
+            ItemData::HunkLine {
+                diff,
+                file_i,
+                hunk_i,
+                line_range,
+                ..
+            } => diff.hunk_content(*file_i, *hunk_i)[line_range.clone()].replace('\t', "    "),
+            ItemData::Stash { message, id, .. } => format!("stash@{id} {message}"),
+            ItemData::Header(header) => header.display_text(),
+            ItemData::BranchStatus(upstream, ahead, behind) => {
+                if *ahead == 0 && *behind == 0 {
+                    format!("Your branch is up to date with '{upstream}'.")
+                } else if *ahead > 0 && *behind == 0 {
+                    format!("Your branch is ahead of '{upstream}' by {ahead} commit(s).")
+                } else if *ahead == 0 && *behind > 0 {
+                    format!("Your branch is behind '{upstream}' by {behind} commit(s).")
+                } else {
+                    format!(
+                        "Your branch and '{upstream}' have diverged,\nand have {ahead} and {behind} different commits each, respectively."
+                    )
+                }
+            }
+            ItemData::Error(err) => err.clone(),
+            ItemData::BlameHeader {
+                short_hash,
+                summary,
+                ..
+            } => format!("{short_hash:<8} {summary}"),
+            ItemData::BlameCodeLine {
+                line_num, content, ..
+            } => format!("{line_num:>4} {}", content.replace('\t', "    ")),
+        }
+    }
+}
+
+impl SectionHeader {
+    pub(crate) fn display_text(&self) -> String {
+        match self {
+            SectionHeader::Remote(remote) => format!("Remote {remote}"),
+            SectionHeader::Tags => "Tags".into(),
+            SectionHeader::Branches => "Branches".into(),
+            SectionHeader::NoBranch => "No branch".into(),
+            SectionHeader::OnBranch(branch) => format!("On branch {branch}"),
+            SectionHeader::Rebase(head, onto) => format!("Rebasing {head} onto {onto}"),
+            SectionHeader::Merge(head) => format!("Merging {head}"),
+            SectionHeader::Revert(head) => format!("Reverting {head}"),
+            SectionHeader::CherryPick(head) => format!("Cherry-picking {head}"),
+            SectionHeader::Stashes => "Stashes".into(),
+            SectionHeader::RecentCommits => "Recent commits".into(),
+            SectionHeader::Commit(oid) => format!("commit {oid}"),
+            SectionHeader::StashRef(stash_ref) => stash_ref.clone(),
+            SectionHeader::StagedChanges(count) => format!("Staged changes ({count})"),
+            SectionHeader::UnstagedChanges(count) => format!("Unstaged changes ({count})"),
+            SectionHeader::UntrackedFiles(count) => format!("Untracked files ({count})"),
+            SectionHeader::Blame(file, commit) => format!("Blame {file} @ {commit}"),
         }
     }
 }

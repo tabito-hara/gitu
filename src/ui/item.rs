@@ -5,7 +5,7 @@ use crate::style::Style;
 use crate::config::Config;
 use crate::gitu_diff::Status;
 use crate::highlight;
-use crate::item_data::{BranchMergeStatus, ItemData, Ref, SectionHeader};
+use crate::item_data::{BranchMergeStatus, ItemData, Ref};
 use crate::items::Item;
 use crate::ui::layout::opts;
 use crate::ui::{UiTree, layout_span, layout_span_nowrap};
@@ -212,31 +212,12 @@ pub(crate) fn layout_item<'a>(
             layout_span(layout, (format!(" {message}").into(), base));
         }
         ItemData::Header(header) => {
-            let content: Cow<str> = match header {
-                SectionHeader::Remote(remote) => format!("Remote {remote}").into(),
-                SectionHeader::Tags => "Tags".into(),
-                SectionHeader::Branches => "Branches".into(),
-                SectionHeader::NoBranch => "No branch".into(),
-                SectionHeader::OnBranch(branch) => format!("On branch {branch}").into(),
-                SectionHeader::Rebase(head, onto) => format!("Rebasing {head} onto {onto}").into(),
-                SectionHeader::Merge(head) => format!("Merging {head}").into(),
-                SectionHeader::Revert(head) => format!("Reverting {head}").into(),
-                SectionHeader::CherryPick(head) => format!("Cherry-picking {head}").into(),
-                SectionHeader::Stashes => "Stashes".into(),
-                SectionHeader::RecentCommits => "Recent commits".into(),
-                SectionHeader::Commit(oid) => format!("commit {oid}").into(),
-                SectionHeader::StashRef(stash_ref) => stash_ref.as_str().into(),
-                SectionHeader::StagedChanges(count) => format!("Staged changes ({count})").into(),
-                SectionHeader::UnstagedChanges(count) => {
-                    format!("Unstaged changes ({count})").into()
-                }
-                SectionHeader::UntrackedFiles(count) => format!("Untracked files ({count})").into(),
-                SectionHeader::Blame(file, commit) => format!("Blame {file} @ {commit}").into(),
-            };
-
             layout_span(
                 layout,
-                (content, base.patch(Style::from(&style.section_header))),
+                (
+                    header.display_text().into(),
+                    base.patch(Style::from(&style.section_header)),
+                ),
             );
         }
         ItemData::BranchStatus(upstream, ahead, behind) => {

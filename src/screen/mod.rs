@@ -531,6 +531,77 @@ impl Screen {
         }
     }
 
+    pub(crate) fn select_next_search_match(&mut self, pattern: &str) -> bool {
+        let Some(item_i) = self.find_search_match(pattern, SearchDirection::Forward) else {
+            return false;
+        };
+        self.move_cursor_to_item(item_i);
+        true
+    }
+
+    pub(crate) fn select_previous_search_match(&mut self, pattern: &str) -> bool {
+        let Some(item_i) = self.find_search_match(pattern, SearchDirection::Backward) else {
+            return false;
+        };
+        self.move_cursor_to_item(item_i);
+        true
+    }
+
+    fn find_search_match(&self, pattern: &str, direction: SearchDirection) -> Option<usize> {
+        if pattern.is_empty() || self.unique_line_index.is_empty() {
+            return None;
+        }
+
+        let pattern = pattern.to_lowercase();
+        let visible_items = self.unique_line_index.values().copied().collect::<Vec<_>>();
+        let current_position = visible_items
+            .iter()
+            .position(|&item_i| item_i == self.cursor)
+            .unwrap_or(0);
+
+        let matches = |item_i: usize| {
+            self.items[item_i]
+                .data
+                .display_text()
+                .to_lowercase()
+                .contains(&pattern)
+        };
+
+        match direction {
+            SearchDirection::Forward => visible_items
+                .iter()
+                .skip(current_position + 1)
+                .chain(visible_items.iter().take(current_position + 1))
+                .copied()
+                .find(|&item_i| matches(item_i)),
+            SearchDirection::Backward => visible_items
+                .iter()
+                .take(current_position)
+                .rev()
+                .chain(visible_items.iter().skip(current_position).rev())
+                .copied()
+                .find(|&item_i| matches(item_i)),
+        }
+    }
+
+    fn move_cursor_to_item(&mut self, item_i: usize) {
+        self.cursor = item_i;
+
+        let half_screen = self.size.1 as usize / 2;
+        let Some(line_of_item) = self.line_of_item(self.cursor) else {
+            return;
+        };
+
+        if line_of_item >= half_screen {
+            self.scroll = line_of_item - half_screen;
+        } else {
+            self.scroll_fit_start();
+        }
+
+        self.scroll_fit_end();
+        self.scroll_fit_start();
+    }
+
     pub(crate) fn is_collapsed(&self, item: &Item) -> bool {
         self.collapsed.contains(&item.id)
     }
@@ -839,6 +910,11 @@ pub(crate) struct HunkLineSelection {
     pub file_i: usize,
     pub hunk_i: usize,
     pub line_range: Range<usize>,
+}
+
+enum SearchDirection {
+    Forward,
+    Backward,
 }
 
 #[derive(Default)]

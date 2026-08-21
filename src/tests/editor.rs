@@ -67,3 +67,44 @@ fn exit_from_picker_exits_menu() {
 fn re_enter_picker_from_menu() {
     snapshot!(setup_clone!(), "bb<esc>bb");
 }
+
+#[test]
+fn search_selects_matching_item() {
+    let mut ctx = setup_clone!();
+    fs::write(ctx.dir.join("alpha.txt"), "").unwrap();
+    fs::write(ctx.dir.join("beta.txt"), "").unwrap();
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("/beta<enter>"));
+
+    assert_eq!(
+        app.screen().get_selected_item().data.display_text(),
+        "beta.txt"
+    );
+}
+
+#[test]
+fn search_next_and_previous_reuse_last_pattern() {
+    let mut ctx = setup_clone!();
+    fs::write(ctx.dir.join("alpha-target.txt"), "").unwrap();
+    fs::write(ctx.dir.join("beta-target.txt"), "").unwrap();
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("/target<enter>"));
+    assert_eq!(
+        app.screen().get_selected_item().data.display_text(),
+        "alpha-target.txt"
+    );
+
+    ctx.update(&mut app, keys("n"));
+    assert_eq!(
+        app.screen().get_selected_item().data.display_text(),
+        "beta-target.txt"
+    );
+
+    ctx.update(&mut app, keys("N"));
+    assert_eq!(
+        app.screen().get_selected_item().data.display_text(),
+        "alpha-target.txt"
+    );
+}

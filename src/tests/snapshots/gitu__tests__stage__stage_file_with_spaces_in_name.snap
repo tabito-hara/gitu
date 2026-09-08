@@ -5,7 +5,7 @@ expression: ctx.redact_buffer()
  On branch main                                                                 |
  Your branch is up to date with 'origin/main'.                                  |
                                                                                 |
-▌Staged changes (1)                                                             |
+ Staged changes (1)                                                             |
 ▌added      file with space.txt                                                 |
                                                                                 |
  Recent commits                                                                 |
@@ -22,4 +22,4 @@ expression: ctx.redact_buffer()
                                                                                 |
 ────────────────────────────────────────────────────────────────────────────────|
 $ git add file with space.txt                                                   |
-styles_hash: 64956c9840a901b0
+styles_hash: 71ffbc202f99da10

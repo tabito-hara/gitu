@@ -11,14 +11,25 @@ fn staged_file() {
 }
 
 #[test]
-fn stage_all_unstaged() {
-    let ctx = setup_clone!();
+fn stage_on_unstaged_header_does_not_stage_all() {
+    let mut ctx = setup_clone!();
     commit(&ctx.dir, "firstfile", "testing\ntesttest\n");
     commit(&ctx.dir, "secondfile", "testing\ntesttest\n");
 
     fs::write(ctx.dir.join("firstfile"), "blahonga\n").unwrap();
     fs::write(ctx.dir.join("secondfile"), "blahonga\n").unwrap();
-    snapshot!(ctx, "js");
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("js"));
+
+    assert_eq!(
+        run(&ctx.dir, &["git", "diff", "--cached", "--name-only"]),
+        ""
+    );
+    assert_eq!(
+        run(&ctx.dir, &["git", "diff", "--name-only"]),
+        "firstfile\nsecondfile\n"
+    );
 }
 
 #[test]
@@ -32,11 +43,21 @@ fn stage_modified_from_anywhere() {
 }
 
 #[test]
-fn stage_all_untracked() {
-    let ctx = setup_clone!();
+fn stage_on_untracked_header_does_not_stage_all() {
+    let mut ctx = setup_clone!();
     run(&ctx.dir, &["touch", "file-a"]);
     run(&ctx.dir, &["touch", "file-b"]);
-    snapshot!(ctx, "js");
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("js"));
+
+    assert_eq!(
+        run(&ctx.dir, &["git", "diff", "--cached", "--name-only"]),
+        ""
+    );
+    let status = run(&ctx.dir, &["git", "status", "--short"]);
+    assert!(status.contains("?? file-a"));
+    assert!(status.contains("?? file-b"));
 }
 
 #[test]
@@ -193,5 +214,5 @@ fn stage_deleted_executable_file() {
 fn stage_file_with_spaces_in_name() {
     let ctx = setup_clone!();
     run(&ctx.dir, &["touch", "file with space.txt"]);
-    snapshot!(ctx, "js");
+    snapshot!(ctx, "jjs");
 }

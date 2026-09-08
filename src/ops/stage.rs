@@ -14,25 +14,34 @@ pub(crate) struct Stage;
 impl OpTrait for Stage {
     fn get_action(&self, target: &ItemData) -> Option<Action> {
         let target = target.clone();
-        target_stage_action(&target).map(|mut target_action| {
-            Rc::new(move |app: &mut App, term: &mut Term| {
-                if let Some(selection) = app.screen().selected_hunk_line_range() {
+        let mut target_action = target_stage_action(&target);
+        if target_action.is_none()
+            && !matches!(target, ItemData::AllUnstaged(_) | ItemData::AllUntracked(_))
+        {
+            return None;
+        }
+
+        Some(Rc::new(move |app: &mut App, term: &mut Term| {
+            if let Some(selection) = app.screen().selected_hunk_line_range() {
+                app.screen_mut().clear_mark();
+                let mut action = stage_line_range(selection);
+                return Rc::get_mut(&mut action).unwrap()(app, term);
+            }
+            if let Some(selection) = app.screen().selected_file_range() {
+                let paths = stageable_files(selection);
+                if !paths.is_empty() {
                     app.screen_mut().clear_mark();
-                    let mut action = stage_line_range(selection);
+                    let mut action = stage_files(paths);
                     return Rc::get_mut(&mut action).unwrap()(app, term);
                 }
-                if let Some(selection) = app.screen().selected_file_range() {
-                    let paths = stageable_files(selection);
-                    if !paths.is_empty() {
-                        app.screen_mut().clear_mark();
-                        let mut action = stage_files(paths);
-                        return Rc::get_mut(&mut action).unwrap()(app, term);
-                    }
-                }
+            }
 
-                Rc::get_mut(&mut target_action).unwrap()(app, term)
-            }) as Action
-        })
+            if let Some(target_action) = &mut target_action {
+                Rc::get_mut(target_action).unwrap()(app, term)
+            } else {
+                Ok(())
+            }
+        }) as Action)
     }
 
     fn is_target_op(&self) -> bool {
@@ -46,8 +55,6 @@ impl OpTrait for Stage {
 
 fn target_stage_action(target: &ItemData) -> Option<Action> {
     let action = match target {
-        ItemData::AllUnstaged(_) => stage_unstaged(),
-        ItemData::AllUntracked(untracked) => stage_untracked(untracked.clone()),
         ItemData::Untracked(u) => stage_file(u.into()),
         ItemData::Delta { diff, file_i, .. } => {
             let diff_header = &diff.file_diffs[*file_i].header;
@@ -93,10 +100,6 @@ fn stage_unstaged() -> Action {
 
         app.run_cmd(term, &[], cmd)
     })
-}
-
-fn stage_untracked(untracked: Vec<std::path::PathBuf>) -> Action {
-    stage_files(untracked)
 }
 
 fn stage_file(file: PathBuf) -> Action {

@@ -50,7 +50,10 @@ fn generate_via_command(
     for arg in args {
         // Replace `{model}` before `{prompt}` so a prompt that happens to
         // contain the literal `{model}` is not re-substituted.
-        cmd.arg(arg.replace("{model}", model).replace("{prompt}", system_prompt));
+        cmd.arg(
+            arg.replace("{model}", model)
+                .replace("{prompt}", system_prompt),
+        );
     }
     cmd.current_dir(cwd)
         .stdin(Stdio::piped())

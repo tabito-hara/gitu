@@ -679,15 +679,20 @@ impl Screen {
         let mut line_end = 0;
 
         for item in &self.items[start..=end] {
-            let ItemData::HunkLine {
-                diff: item_diff,
-                file_i: item_file_i,
-                hunk_i: item_hunk_i,
-                line_i,
-                ..
-            } = &item.data
-            else {
-                return None;
+            let (item_diff, item_file_i, item_hunk_i, line_i) = match &item.data {
+                ItemData::Hunk {
+                    diff: item_diff,
+                    file_i: item_file_i,
+                    hunk_i: item_hunk_i,
+                } => (item_diff, item_file_i, item_hunk_i, None),
+                ItemData::HunkLine {
+                    diff: item_diff,
+                    file_i: item_file_i,
+                    hunk_i: item_hunk_i,
+                    line_i,
+                    ..
+                } => (item_diff, item_file_i, item_hunk_i, Some(line_i)),
+                _ => return None,
             };
 
             if let Some(diff) = &diff {
@@ -714,8 +719,16 @@ impl Screen {
                 hunk_i = Some(*item_hunk_i);
             }
 
-            line_start = line_start.min(*line_i);
-            line_end = line_end.max(*line_i + 1);
+            if let Some(line_i) = line_i
+                && (!item.unselectable || line_start != usize::MAX)
+            {
+                line_start = line_start.min(*line_i);
+                line_end = line_end.max(*line_i + 1);
+            }
+        }
+
+        if line_start == usize::MAX {
+            return None;
         }
 
         Some(HunkLineSelection {

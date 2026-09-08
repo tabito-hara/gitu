@@ -76,6 +76,49 @@ fn unstage_selected_lines() {
 }
 
 #[test]
+fn unstage_selected_lines_from_hunk_header() {
+    let mut ctx = setup_clone!();
+    commit(&ctx.dir, "firstfile", "base\n");
+    fs::write(ctx.dir.join("firstfile"), "base\none\ntwo\nthree\n").unwrap();
+    run(&ctx.dir, &["git", "add", "."]);
+
+    let mut app = ctx.init_app();
+    ctx.update(
+        &mut app,
+        keys("jj<tab><ctrl+j><ctrl+space><ctrl+j><ctrl+j>u"),
+    );
+
+    let cached = run(&ctx.dir, &["git", "diff", "--cached", "--", "firstfile"]);
+    assert!(cached.contains("+three\n"));
+    assert!(!cached.contains("+one\n+two\n"));
+
+    let unstaged = run(&ctx.dir, &["git", "diff", "--", "firstfile"]);
+    assert!(unstaged.contains("+one\n+two\n"));
+    assert!(!unstaged.contains("+three\n"));
+}
+
+#[test]
+fn unstage_selected_lines_in_added_file() {
+    let mut ctx = setup_clone!();
+    fs::write(ctx.dir.join("new-file"), "one\ntwo\nthree\n").unwrap();
+    run(&ctx.dir, &["git", "add", "new-file"]);
+
+    let mut app = ctx.init_app();
+    ctx.update(
+        &mut app,
+        keys("jj<tab><ctrl+j><ctrl+space><ctrl+j><ctrl+j>u"),
+    );
+
+    let cached = run(&ctx.dir, &["git", "diff", "--cached", "--", "new-file"]);
+    assert!(cached.contains("+three\n"));
+    assert!(!cached.contains("+one\n+two\n"));
+
+    let unstaged = run(&ctx.dir, &["git", "diff", "--", "new-file"]);
+    assert!(unstaged.contains("+one\n+two\n"));
+    assert!(!unstaged.contains("+three\n"));
+}
+
+#[test]
 fn unstage_deleted_file() {
     let ctx = setup_clone!();
     commit(&ctx.dir, "to-delete", "testing\ntesttest\n");

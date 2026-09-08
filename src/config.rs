@@ -607,7 +607,10 @@ mod tests {
             "owner-repo-specific"
         );
         // Falls through to the base name when owner/repo is unlisted.
-        assert_eq!(config.ai.prompt_for(&["other/gitu", "gitu"]), "name-specific");
+        assert_eq!(
+            config.ai.prompt_for(&["other/gitu", "gitu"]),
+            "name-specific"
+        );
         // Unlisted repo falls back to the global template.
         assert_eq!(config.ai.prompt_for(&["x/y", "z"]), "global");
     }

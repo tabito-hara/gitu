@@ -1,4 +1,4 @@
-use crate::gitu_diff::FileDiff;
+use crate::gitu_diff::{FileDiff, Status};
 use std::ops::Range;
 
 #[derive(Debug, Clone)]
@@ -71,6 +71,14 @@ impl Diff {
         line_range: Range<usize>,
         mode: PatchMode,
     ) -> String {
+        if matches!(mode, PatchMode::Reverse)
+            && self.file_diffs[file_i].header.status == Status::Added
+            && let Some(patch) =
+                self.format_added_file_reverse_line_patch(file_i, hunk_i, line_range.clone())
+        {
+            return patch;
+        }
+
         let hunk = &self.file_diffs[file_i].hunks[hunk_i];
         let file_header = &self.text[self.file_diffs[file_i].header.range.clone()];
         let hunk_header = &self.text[hunk.header.range.clone()];
@@ -103,6 +111,62 @@ impl Diff {
             .collect::<String>();
 
         format!("{file_header}{hunk_header}{modified_content}")
+    }
+
+    fn format_added_file_reverse_line_patch(
+        &self,
+        file_i: usize,
+        hunk_i: usize,
+        line_range: Range<usize>,
+    ) -> Option<String> {
+        let hunk = &self.file_diffs[file_i].hunks[hunk_i];
+        let file_header = &self.text[self.file_diffs[file_i].header.range.clone()];
+        let hunk_content = &self.text[hunk.content.range.clone()];
+
+        let added_line_count = hunk_content
+            .split_inclusive('\n')
+            .filter(|line| line.starts_with('+'))
+            .count();
+        let selected_line_count = hunk_content
+            .split_inclusive('\n')
+            .enumerate()
+            .filter(|(i, line)| line_range.contains(i) && line.starts_with('+'))
+            .count();
+
+        if selected_line_count == 0 {
+            return None;
+        }
+
+        if selected_line_count == added_line_count {
+            return Some(format!("{}{}", file_header, self.hunk(file_i, hunk_i)));
+        }
+
+        let diff_git_line = file_header
+            .lines()
+            .find(|line| line.starts_with("diff --git "))?;
+        let path_line = file_header.lines().find(|line| line.starts_with("+++ "))?;
+        let path = path_line.strip_prefix("+++ ")?;
+        let old_line_count = added_line_count - selected_line_count;
+
+        let modified_content = hunk_content
+            .split_inclusive('\n')
+            .enumerate()
+            .filter_map(|(i, line)| {
+                if line_range.contains(&i) {
+                    Some(line.to_string())
+                } else if let Some(stripped) = line.strip_prefix('+') {
+                    Some(format!(" {stripped}"))
+                } else if line.starts_with('\\') {
+                    Some(line.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect::<String>();
+
+        Some(format!(
+            "{diff_git_line}\n--- {path}\n+++ {path}\n@@ -1,{old_line_count} +1,{added_line_count} @@\n{modified_content}"
+        ))
     }
 
     pub(crate) fn hunk_first_changed_line_num(&self, file_i: usize, hunk_i: usize) -> u32 {

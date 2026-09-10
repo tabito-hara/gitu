@@ -219,6 +219,18 @@ impl Screen {
         self.clamp_scroll();
     }
 
+    pub(crate) fn scroll_view_top(&mut self) {
+        self.scroll = 0;
+        self.clamp_scroll();
+    }
+
+    pub(crate) fn scroll_view_bottom(&mut self) {
+        // Scrolling past the visible content is allowed a couple of context
+        // lines (see `max_scroll_with_context`).
+        self.scroll = self.max_scroll_with_context();
+        self.clamp_scroll();
+    }
+
     pub(crate) fn toggle_section(&mut self) -> Res<()> {
         let selected = &self.items[self.cursor];
 

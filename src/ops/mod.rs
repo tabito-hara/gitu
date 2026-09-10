@@ -146,6 +146,8 @@ pub(crate) enum Op {
     Quit,
     ScrollViewUp,
     ScrollViewDown,
+    ScrollViewTop,
+    ScrollViewBottom,
 
     #[serde(untagged)]
     OpenMenu(Menu),
@@ -178,6 +180,8 @@ impl Op {
             Op::MoveBottom => Box::new(editor::MoveBottom),
             Op::ScrollViewUp => Box::new(editor::ScrollViewUp),
             Op::ScrollViewDown => Box::new(editor::ScrollViewDown),
+            Op::ScrollViewTop => Box::new(editor::ScrollViewTop),
+            Op::ScrollViewBottom => Box::new(editor::ScrollViewBottom),
             Op::SetMark => Box::new(editor::SetMark),
             Op::ClearMark => Box::new(editor::ClearMark),
             Op::Search => Box::new(editor::Search),

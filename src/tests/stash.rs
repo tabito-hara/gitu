@@ -83,7 +83,7 @@ pub(crate) fn stash_working_tree() {
 
 #[test]
 pub(crate) fn stash_working_tree_when_everything_is_staged() {
-    snapshot!(setup(setup_clone!()), "jszw");
+    snapshot!(setup(setup_clone!()), "jjskzw");
 }
 
 #[test]

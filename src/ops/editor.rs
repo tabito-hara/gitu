@@ -447,6 +447,36 @@ impl OpTrait for ScrollViewDown {
     }
 }
 
+pub(crate) struct ScrollViewTop;
+impl OpTrait for ScrollViewTop {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, _term| {
+            app.close_menu();
+            app.screen_mut().scroll_view_top();
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Scroll view top".into()
+    }
+}
+
+pub(crate) struct ScrollViewBottom;
+impl OpTrait for ScrollViewBottom {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, _term| {
+            app.close_menu();
+            app.screen_mut().scroll_view_bottom();
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Scroll view bottom".into()
+    }
+}
+
 pub(crate) struct MoveTop;
 impl OpTrait for MoveTop {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {

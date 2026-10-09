@@ -55,6 +55,28 @@ fn help_menu() {
 }
 
 #[test]
+fn switch_repository() {
+    let mut ctx = setup_clone!();
+    let other = helpers::RepoTestContext::setup_clone("switch_repository_other");
+    let mut app = ctx.init_app();
+
+    ctx.update(
+        &mut app,
+        keys(&format!("<ctrl+x>b{}<enter>", other.dir.display())),
+    );
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        other.dir.canonicalize().unwrap()
+    );
+
+    ctx.update(&mut app, keys("<ctrl+x><ctrl+b><down><enter>"));
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        ctx.dir.canonicalize().unwrap()
+    );
+}
+
+#[test]
 fn fresh_init() {
     let mut ctx = setup_clone!();
     run(&ctx.dir, &["rm", "-rf", ".git"]);

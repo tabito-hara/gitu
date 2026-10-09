@@ -3,9 +3,11 @@ use crate::{
     app::{App, PromptParams, State, root_menu},
     item_data::ItemData,
     menu::PendingMenu,
+    picker::{PickerData, PickerItem, PickerState},
     screen::NavMode,
     term::Term,
 };
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 pub(crate) struct Quit;
@@ -339,6 +341,86 @@ impl OpTrait for SearchPrevious {
 
     fn display(&self, _state: &State) -> String {
         "Previous search match".into()
+    }
+}
+
+pub(crate) struct SwitchRepository;
+impl OpTrait for SwitchRepository {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, term| {
+            let default = app
+                .state
+                .repo
+                .workdir()
+                .map(|path| path.display().to_string());
+            let path = app.prompt(
+                term,
+                &PromptParams {
+                    prompt: "Switch to repository",
+                    create_default_value: Box::new(move |_| default.clone()),
+                    ..Default::default()
+                },
+            )?;
+
+            if path.is_empty() {
+                return Ok(());
+            }
+
+            let path = resolve_switch_path(app, path);
+            let size = term.size().map_err(crate::error::Error::Term)?;
+            app.switch_repo(&path, size)
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Switch repo".into()
+    }
+}
+
+fn resolve_switch_path(app: &App, path: String) -> PathBuf {
+    let path = PathBuf::from(path);
+    if path.is_absolute() {
+        path
+    } else {
+        app.state
+            .repo
+            .workdir()
+            .unwrap_or_else(|| Path::new("."))
+            .join(path)
+    }
+}
+
+pub(crate) struct SwitchRepositoryFromList;
+impl OpTrait for SwitchRepositoryFromList {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, term| {
+            let items = app
+                .state
+                .repo_buffers
+                .iter()
+                .map(|path| {
+                    let display = path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .map(|name| format!("{name}  {}", path.display()))
+                        .unwrap_or_else(|| path.display().to_string());
+
+                    PickerItem::new(display, PickerData::Item(path.display().to_string()))
+                })
+                .collect();
+
+            let picker = PickerState::new("Switch to opened repository", items, false);
+            if let Some(PickerData::Item(path)) = app.pick(term, picker)? {
+                let size = term.size().map_err(crate::error::Error::Term)?;
+                app.switch_repo(&PathBuf::from(path), size)?;
+            }
+
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Switch opened repo".into()
     }
 }
 

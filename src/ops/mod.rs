@@ -141,6 +141,8 @@ pub(crate) enum Op {
     Search,
     SearchNext,
     SearchPrevious,
+    SwitchRepository,
+    SwitchRepositoryFromList,
 
     Refresh,
     Quit,
@@ -187,6 +189,8 @@ impl Op {
             Op::Search => Box::new(editor::Search),
             Op::SearchNext => Box::new(editor::SearchNext),
             Op::SearchPrevious => Box::new(editor::SearchPrevious),
+            Op::SwitchRepository => Box::new(editor::SwitchRepository),
+            Op::SwitchRepositoryFromList => Box::new(editor::SwitchRepositoryFromList),
             Op::Checkout => Box::new(branch::Checkout),
             Op::CheckoutNewBranch => Box::new(branch::CheckoutNewBranch),
             Op::Spinoff => Box::new(branch::Spinoff),

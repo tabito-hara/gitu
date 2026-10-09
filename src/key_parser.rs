@@ -22,9 +22,12 @@ pub(crate) fn parse_keys(input: &str) -> IResult<&str, Vec<(KeyModifiers, KeyCod
 /// Parse a string into [`Modifiers`] and [`KeyCode`]s. This function is
 /// intended to be used only when parsing the key bindings in a config file.
 pub(crate) fn parse_config_keys(input: &str) -> IResult<&str, Vec<(KeyModifiers, KeyCode)>> {
-    map(parse_key_combo, |(modifiers, keys)| {
-        keys.into_iter().map(|key| (modifiers, key)).collect()
-    })
+    alt((
+        parse_explicit_key_events,
+        map(parse_key_combo, |(modifiers, keys)| {
+            keys.into_iter().map(|key| (modifiers, key)).collect()
+        }),
+    ))
     .parse(input)
 }
 
@@ -79,6 +82,28 @@ fn parse_key_combo(input: &str) -> IResult<&str, (KeyModifiers, Vec<KeyCode>)> {
         map(parse_prefixed, |keys| (KeyModifiers::NONE, keys)),
         parse_multiple_keys,
     )))
+    .parse(input)
+}
+
+fn parse_explicit_key_events(input: &str) -> IResult<&str, Vec<(KeyModifiers, KeyCode)>> {
+    all_consuming(separated_list1(char('+'), parse_key_event_token)).parse(input.trim())
+}
+
+fn parse_key_event_token(input: &str) -> IResult<&str, (KeyModifiers, KeyCode)> {
+    alt((
+        delimited(
+            char('<'),
+            alt((
+                map(
+                    (parse_modifiers, char('+'), parse_normal_key),
+                    |(modifiers, _, key)| (modifiers, key),
+                ),
+                map(parse_normal_key, |key| (KeyModifiers::NONE, key)),
+            )),
+            char('>'),
+        ),
+        map(parse_char_key, |key| (KeyModifiers::NONE, key)),
+    ))
     .parse(input)
 }
 
@@ -214,6 +239,30 @@ mod tests {
         assert_eq!(
             parse_key_combo("space"),
             Ok(("", (KeyModifiers::NONE, vec![KeyCode::Char(' ')])))
+        );
+    }
+
+    #[test]
+    fn explicit_key_events_allow_mixed_modifiers() {
+        assert_eq!(
+            parse_config_keys("<ctrl+x>+b"),
+            Ok((
+                "",
+                vec![
+                    (KeyModifiers::CONTROL, Char('x')),
+                    (KeyModifiers::NONE, Char('b'))
+                ]
+            ))
+        );
+        assert_eq!(
+            parse_config_keys("<ctrl+x>+<ctrl+b>"),
+            Ok((
+                "",
+                vec![
+                    (KeyModifiers::CONTROL, Char('x')),
+                    (KeyModifiers::CONTROL, Char('b'))
+                ]
+            ))
         );
     }
 

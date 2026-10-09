@@ -4,23 +4,23 @@ assertion_line: 54
 expression: ctx.redact_buffer()
 ---
 ────────────────────────────────────────────────────────────────────────────────|
- Help                                      Submenu           On branch main     |
- x                Delete marked branches   b   Branch        tab Fold           |
- Y                Show Refs                c   Commit                           |
- S                Stage all modified       f   Fetch                            |
- U                Unstage all              i   Gitignore                        |
- backtab          Cycle all                h/? Help                             |
- k/up             Up                       l   Log                              |
- j/down           Down                     m   Merge                            |
- ctrl+k/ctrl+up   Up line                  M   Remote                           |
- ctrl+j/ctrl+down Down line                F   Pull                             |
- alt+k/alt+up     Prev section             P   Push                             |
- alt+j/alt+down   Next section             r   Rebase                           |
- alt+h/alt+left   Parent section           X   Reset                            |
- g+g              Top                      V   Revert                           |
- G                Bottom                   A   Cherry-pick                      |
- ctrl+u           Scroll half page up      z   Stash                            |
- ctrl+d           Scroll half page down                                         |
- ctrl+space       Set mark                                                      |
- ctrl+g           Clear mark                                                    |
-styles_hash: 7fb1942ceb3855ee
+ Help                                       Submenu           On branch main    |
+ x                 Delete marked branches   b   Branch        tab Fold          |
+ Y                 Show Refs                c   Commit                          |
+ S                 Stage all modified       f   Fetch                           |
+ U                 Unstage all              i   Gitignore                       |
+ backtab           Cycle all                h/? Help                            |
+ k/up              Up                       l   Log                             |
+ j/down            Down                     m   Merge                           |
+ ctrl+k/ctrl+up    Up line                  M   Remote                          |
+ ctrl+j/ctrl+down  Down line                F   Pull                            |
+ alt+k/alt+up      Prev section             P   Push                            |
+ alt+j/alt+down    Next section             r   Rebase                          |
+ alt+h/alt+left    Parent section           X   Reset                           |
+ g+g               Top                      V   Revert                          |
+ G                 Bottom                   A   Cherry-pick                     |
+ ctrl+u            Scroll half page up      z   Stash                           |
+ ctrl+d            Scroll half page down                                        |
+ ctrl+space        Set mark                                                     |
+ ctrl+g            Clear mark                                                   |
+styles_hash: cafbe9449ba2caf8

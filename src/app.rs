@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::io::Read;
 use std::io::Write;
 use std::ops::DerefMut;
+use std::path::{Path, PathBuf};
 use std::process::Child;
 use std::process::Command;
 use std::process::Stdio;
@@ -47,6 +48,7 @@ pub(crate) struct State {
     pub pending_keys: Vec<(KeyModifiers, KeyCode)>,
     pub quit: bool,
     pub screens: Vec<Screen>,
+    pub repo_buffers: Vec<PathBuf>,
     pub pending_menu: Option<PendingMenu>,
     pending_cmd: Option<(Child, Arc<RwLock<CmdLogEntry>>)>,
     enable_async_cmds: bool,
@@ -100,6 +102,10 @@ impl App {
         };
 
         let pending_menu = root_menu(&config).map(PendingMenu::init);
+        let repo_buffers = repo
+            .workdir()
+            .map(|path| vec![canonicalize_repo_path(path)])
+            .unwrap_or_default();
 
         let clipboard = Clipboard::new()
             .inspect_err(|e| log::warn!("Couldn't initialize clipboard: {e}"))
@@ -113,6 +119,7 @@ impl App {
                 enable_async_cmds,
                 quit: false,
                 screens,
+                repo_buffers,
                 pending_cmd: None,
                 pending_menu,
                 current_cmd_log: CmdLog::new(),
@@ -201,6 +208,40 @@ impl App {
 
         self.stage_redraw();
         Ok(())
+    }
+
+    pub(crate) fn switch_repo(&mut self, path: &Path, size: (u16, u16)) -> Res<()> {
+        if self.state.pending_cmd.is_some() {
+            return Err(Error::CmdAlreadyRunning);
+        }
+
+        let repo = Rc::new(Repository::discover(path).map_err(Error::OpenRepo)?);
+        let repo_path = repo.workdir().ok_or(Error::NoRepoWorkdir)?;
+        let repo_path = canonicalize_repo_path(repo_path);
+        let screens = vec![screen::status::create(
+            Arc::clone(&self.state.config),
+            Rc::clone(&repo),
+            size,
+        )?];
+
+        self.state.repo = repo;
+        self.state.screens = screens;
+        self.state.pending_menu = root_menu(&self.state.config).map(PendingMenu::init);
+        self.state.pending_keys.clear();
+        self.state.prompt.reset();
+        self.state.picker = None;
+        self.state.search = None;
+        self.state.file_watcher = self.init_file_watcher()?;
+        self.record_repo_buffer(repo_path.clone());
+        self.display_info(format!("Switched to repository: {}", repo_path.display()));
+        self.stage_redraw();
+
+        Ok(())
+    }
+
+    fn record_repo_buffer(&mut self, path: PathBuf) {
+        self.state.repo_buffers.retain(|existing| existing != &path);
+        self.state.repo_buffers.insert(0, path);
     }
 
     pub fn handle_event(&mut self, term: &mut Term, event: Event) -> Res<()> {
@@ -715,6 +756,10 @@ impl App {
             }
         }
     }
+}
+
+fn canonicalize_repo_path(path: &Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
 }
 
 fn get_prompt_result(params: &PromptParams, app: &mut App) -> Res<String> {

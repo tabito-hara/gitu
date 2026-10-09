@@ -124,13 +124,10 @@ fn editor(file: &Path, maybe_line: Option<u32>) -> Option<Action> {
     let file = file.to_str().unwrap().to_string();
 
     Some(Rc::new(move |app, term| {
-        let configured_editor = EDITOR_VARS
+        let editor = EDITOR_VARS
             .into_iter()
-            .find_map(|var| std::env::var(var).ok());
-
-        let Some(editor) = configured_editor else {
-            return Err(Error::NoEditorSet);
-        };
+            .find_map(|var| std::env::var(var).ok())
+            .unwrap_or_else(|| "vi".to_string());
 
         let cmd = if cfg!(windows) {
             parse_editor_command_windows(&editor, &file, maybe_line)

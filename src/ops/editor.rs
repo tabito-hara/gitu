@@ -396,6 +396,7 @@ impl OpTrait for SwitchRepository {
                             .map(|path| path.display().to_string())
                     }),
                     complete: Some(Box::new(opened_repository_completions)),
+                    submit_completion: true,
                     ..Default::default()
                 },
             )?;

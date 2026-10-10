@@ -673,6 +673,9 @@ impl App {
                     };
                     if let Some(value) = value {
                         self.state.prompt.state.set_value(value);
+                        if params.submit_completion {
+                            return get_prompt_result(params, self);
+                        }
                     }
                     self.redraw_now(term)?;
                     continue;
@@ -934,6 +937,7 @@ pub(crate) struct PromptParams {
     pub hide_menu: bool,
     pub complete: Option<CompletionFn>,
     pub refresh_completions: bool,
+    pub submit_completion: bool,
 }
 
 impl Default for PromptParams {
@@ -944,6 +948,7 @@ impl Default for PromptParams {
             hide_menu: true,
             complete: None,
             refresh_completions: false,
+            submit_completion: false,
         }
     }
 }

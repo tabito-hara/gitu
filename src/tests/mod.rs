@@ -90,14 +90,12 @@ fn switch_repository_completion() {
     );
 
     let original_name = ctx.dir.file_name().unwrap().to_str().unwrap();
-    ctx.update(
-        &mut app,
-        keys(&format!("<ctrl+x>b{original_name}<tab><enter>")),
-    );
+    ctx.update(&mut app, keys(&format!("<ctrl+x>b{original_name}<tab>")));
     assert_eq!(
         app.state.repo.workdir().unwrap(),
         ctx.dir.canonicalize().unwrap()
     );
+    assert!(app.state.prompt.data.is_none());
 }
 
 #[test]
@@ -193,15 +191,14 @@ fn switch_repository_only_opened_buffers() {
         &mut app,
         keys(&format!("<ctrl+x><ctrl+f>{}<enter>", second.display())),
     );
-    ctx.update(
-        &mut app,
-        keys("<ctrl+x>bcompletion_<tab>alpha<enter><enter>"),
-    );
+    ctx.update(&mut app, keys("<ctrl+x>bcompletion_<tab>alpha<enter>"));
     assert_eq!(
         app.state.repo.workdir().unwrap(),
         first.canonicalize().unwrap()
     );
     assert_eq!(app.state.repo_buffers.len(), 3);
+    assert!(app.state.prompt.data.is_none());
+    assert!(app.state.picker.is_none());
 
     ctx.update(&mut app, keys("<ctrl+x>b<enter>"));
     assert_eq!(

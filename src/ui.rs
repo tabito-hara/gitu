@@ -38,9 +38,26 @@ impl Measure for Span<'_> {
 
 pub(crate) fn ui(term: &mut TermBackend, state: &mut State) -> Res<()> {
     let size = term.size().unwrap();
+    let header_height = u16::from(state.config.general.show_repository_header.enabled);
+    let screen_size = (size.0, size.1.saturating_sub(header_height));
+    state.screens.last_mut().unwrap().size = screen_size;
     let mut layout = UiTree::new();
 
     layout.col(opts(), |layout| {
+        if state.config.general.show_repository_header.enabled {
+            let path = state.repo.workdir().unwrap_or_else(|| state.repo.path());
+            let name = path
+                .file_name()
+                .unwrap_or(path.as_os_str())
+                .to_string_lossy();
+            let style = Style::from(&state.config.style.section_header);
+            layout.row_with(style, opts().fill_x().no_wrap(), |layout| {
+                layout_span_nowrap(
+                    layout,
+                    (format!("Buffer: {name}  {}", path.display()).into(), style),
+                );
+            });
+        }
         layout.col(opts().fill_xy(), |layout| {
             let hide_cursor = state.picker.is_some();
             screen::layout_screen(layout, state.screens.last().unwrap(), hide_cursor);
@@ -77,7 +94,7 @@ pub(crate) fn ui(term: &mut TermBackend, state: &mut State) -> Res<()> {
 
     term.flush().map_err(Error::Term)?;
 
-    state.screens.last_mut().unwrap().size = size;
+    state.screens.last_mut().unwrap().size = screen_size;
 
     Ok(())
 }

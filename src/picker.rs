@@ -111,6 +111,12 @@ impl PickerState {
         state
     }
 
+    pub(crate) fn set_items(&mut self, items: Vec<PickerItem>) {
+        self.items = items;
+        self.cursor = 0;
+        self.update_filter();
+    }
+
     /// Create a picker showing only local branches by shorthand name.
     /// The default branch (if any) is listed first. The exclude_ref is omitted.
     pub(crate) fn with_branches(params: PickerParams) -> Self {

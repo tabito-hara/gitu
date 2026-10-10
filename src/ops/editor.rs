@@ -114,6 +114,7 @@ impl OpTrait for ToggleArg {
                         prompt: display,
                         create_default_value: Box::new(move |_| default.clone()),
                         hide_menu: false,
+                        ..Default::default()
                     },
                 )?;
 
@@ -344,8 +345,8 @@ impl OpTrait for SearchPrevious {
     }
 }
 
-pub(crate) struct SwitchRepository;
-impl OpTrait for SwitchRepository {
+pub(crate) struct OpenRepository;
+impl OpTrait for OpenRepository {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {
         Some(Rc::new(|app, term| {
             let default = app
@@ -356,8 +357,10 @@ impl OpTrait for SwitchRepository {
             let path = app.prompt(
                 term,
                 &PromptParams {
-                    prompt: "Switch to repository",
+                    prompt: "Open repository",
                     create_default_value: Box::new(move |_| default.clone()),
+                    complete: Some(Box::new(directory_completions)),
+                    refresh_completions: true,
                     ..Default::default()
                 },
             )?;
@@ -373,12 +376,66 @@ impl OpTrait for SwitchRepository {
     }
 
     fn display(&self, _state: &State) -> String {
+        "Open repo".into()
+    }
+}
+
+pub(crate) struct SwitchRepository;
+impl OpTrait for SwitchRepository {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, term| {
+            let input = app.prompt(
+                term,
+                &PromptParams {
+                    prompt: "Switch to opened repository",
+                    create_default_value: Box::new(|app| {
+                        app.state
+                            .repo_buffers
+                            .get(1)
+                            .or_else(|| app.state.repo_buffers.first())
+                            .map(|path| path.display().to_string())
+                    }),
+                    complete: Some(Box::new(opened_repository_completions)),
+                    ..Default::default()
+                },
+            )?;
+            let resolved = resolve_switch_path(app, input.clone());
+            let matches: Vec<PathBuf> = app
+                .state
+                .repo_buffers
+                .iter()
+                .filter(|path| {
+                    **path == resolved
+                        || path.file_name().is_some_and(|name| name == input.as_str())
+                })
+                .cloned()
+                .collect();
+            match matches.as_slice() {
+                [path] => {
+                    let size = term.size().map_err(crate::error::Error::Term)?;
+                    app.switch_repo(path, size)
+                }
+                [] => {
+                    app.display_error(format!("Repository is not open: {input}"));
+                    Ok(())
+                }
+                _ => {
+                    app.display_error(format!(
+                        "Multiple opened repositories named {input}; select one with Tab"
+                    ));
+                    Ok(())
+                }
+            }
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
         "Switch repo".into()
     }
 }
 
 fn resolve_switch_path(app: &App, path: String) -> PathBuf {
-    let path = PathBuf::from(path);
+    let path = expand_home_path(Path::new(&path));
     if path.is_absolute() {
         path
     } else {
@@ -388,6 +445,67 @@ fn resolve_switch_path(app: &App, path: String) -> PathBuf {
             .unwrap_or_else(|| Path::new("."))
             .join(path)
     }
+}
+
+fn expand_home_path(path: &Path) -> PathBuf {
+    if let Ok(suffix) = path.strip_prefix("~")
+        && let Some(home) = std::env::var_os("HOME")
+    {
+        PathBuf::from(home).join(suffix)
+    } else {
+        path.to_path_buf()
+    }
+}
+
+fn opened_repository_completions(app: &App, input: &str) -> Vec<String> {
+    let expanded = expand_home_path(Path::new(input));
+    app.state
+        .repo_buffers
+        .iter()
+        .filter(|path| {
+            path.to_string_lossy()
+                .starts_with(expanded.to_string_lossy().as_ref())
+                || path
+                    .file_name()
+                    .is_some_and(|name| name.to_string_lossy().starts_with(input))
+        })
+        .map(|path| path.display().to_string())
+        .collect()
+}
+
+fn directory_completions(app: &App, input: &str) -> Vec<String> {
+    if input == "~" {
+        return std::env::var_os("HOME")
+            .map(|_| format!("~{}", std::path::MAIN_SEPARATOR))
+            .into_iter()
+            .collect();
+    }
+    let mut candidates = Vec::new();
+    let path = Path::new(input);
+    let (parent, prefix) = if input.is_empty() || input.ends_with(std::path::MAIN_SEPARATOR) {
+        (path, "")
+    } else {
+        (
+            path.parent().unwrap_or_else(|| Path::new("")),
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or(""),
+        )
+    };
+    let directory = resolve_switch_path(app, parent.display().to_string());
+    if let Ok(entries) = std::fs::read_dir(directory) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            if name.to_string_lossy().starts_with(prefix) && entry.path().is_dir() {
+                candidates.push(format!(
+                    "{}{}",
+                    parent.join(name).display(),
+                    std::path::MAIN_SEPARATOR
+                ));
+            }
+        }
+    }
+    candidates
 }
 
 pub(crate) struct SwitchRepositoryFromList;

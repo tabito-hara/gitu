@@ -18,6 +18,11 @@ pub(crate) struct TextInput {
 }
 
 impl TextInput {
+    pub(crate) fn set_value(&mut self, value: String) {
+        self.position = value.chars().count();
+        self.value = value;
+    }
+
     /// Splits the value around the char the cursor is on, so it can be drawn
     /// as a cursor rather than the cursor taking up a column of its own. That
     /// char is empty with the cursor at the end of the value.

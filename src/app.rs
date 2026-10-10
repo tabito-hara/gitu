@@ -32,6 +32,7 @@ use crate::menu::Menu;
 use crate::menu::PendingMenu;
 use crate::ops::Op;
 use crate::picker::PickerData;
+use crate::picker::PickerItem;
 use crate::picker::PickerState;
 use crate::prompt;
 use crate::screen;
@@ -339,9 +340,13 @@ impl App {
     }
 
     fn handle_mouse_input(&mut self, term: &mut Term, mouse: &MouseEvent) -> Res<bool> {
+        let header_height = u16::from(self.state.config.general.show_repository_header.enabled);
+        if matches!(mouse.kind, MouseEventKind::Down(_)) && mouse.row < header_height {
+            return Ok(false);
+        }
+        let click_y = mouse.row.saturating_sub(header_height) as usize;
         match mouse.kind {
             MouseEventKind::Down(MouseButton::Left) => {
-                let click_y = mouse.row as usize;
                 if self.screen().is_valid_screen_line(click_y) {
                     let old_selected_item_id = self.screen().get_selected_item().id;
                     self.handle_op(Op::MoveToScreenLine(click_y), term)?;
@@ -359,7 +364,6 @@ impl App {
                 }
             }
             MouseEventKind::Down(MouseButton::Right) => {
-                let click_y = mouse.row as usize;
                 if self.screen().is_valid_screen_line(click_y) {
                     self.handle_op(Op::MoveToScreenLine(click_y), term)?;
                     self.handle_op(Op::Show, term)?;
@@ -627,6 +631,53 @@ impl App {
 
         loop {
             let event = term.read_event()?;
+            if let Event::Key(key) = &event {
+                if key.kind == event::KeyEventKind::Release {
+                    continue;
+                }
+                if key.code == KeyCode::Tab
+                    && let Some(complete) = &params.complete
+                {
+                    let input = self.state.prompt.state.value.clone();
+                    let mut candidates = complete(self, &input);
+                    candidates.sort();
+                    candidates.dedup();
+                    let value = match candidates.len() {
+                        0 => None,
+                        1 => candidates.pop(),
+                        _ => {
+                            let items = candidates
+                                .into_iter()
+                                .map(|value| {
+                                    PickerItem::new(value.clone(), PickerData::Item(value))
+                                })
+                                .collect();
+                            let prompt_data = self.state.prompt.data.take();
+                            let mut picker = PickerState::new(params.prompt, items, false);
+                            let result = if params.refresh_completions {
+                                picker.input_state.set_value(input);
+                                picker.update_filter();
+                                self.state.picker = Some(picker);
+                                let result = self.handle_picker(term, Some(complete));
+                                self.state.picker = None;
+                                result
+                            } else {
+                                self.pick(term, picker)
+                            };
+                            self.state.prompt.data = prompt_data;
+                            match result? {
+                                Some(PickerData::Item(value)) => Some(value),
+                                _ => None,
+                            }
+                        }
+                    };
+                    if let Some(value) = value {
+                        self.state.prompt.state.set_value(value);
+                    }
+                    self.redraw_now(term)?;
+                    continue;
+                }
+            }
             self.handle_event(term, event)?;
 
             if self.state.prompt.state.status == text_input::Status::Done {
@@ -704,19 +755,48 @@ impl App {
     /// ```
     pub fn pick(&mut self, term: &mut Term, picker_state: PickerState) -> Res<Option<PickerData>> {
         self.state.picker = Some(picker_state);
-        let result = self.handle_picker(term);
+        let result = self.handle_picker(term, None);
 
         self.state.picker = None;
 
         result
     }
 
-    fn handle_picker(&mut self, term: &mut Term) -> Res<Option<PickerData>> {
+    fn handle_picker(
+        &mut self,
+        term: &mut Term,
+        complete: Option<&CompletionFn>,
+    ) -> Res<Option<PickerData>> {
         self.redraw_now(term)?;
 
         loop {
+            let previous_input = self
+                .state
+                .picker
+                .as_ref()
+                .map(|picker| picker.pattern().to_string());
             let event = term.read_event()?;
             self.handle_event(term, event)?;
+
+            if let Some(complete) = complete
+                && let Some(input) = self
+                    .state
+                    .picker
+                    .as_ref()
+                    .map(|picker| picker.pattern().to_string())
+                && previous_input.as_ref() != Some(&input)
+            {
+                let mut candidates = complete(self, &input);
+                candidates.sort();
+                candidates.dedup();
+                let items = candidates
+                    .into_iter()
+                    .map(|value| PickerItem::new(value.clone(), PickerData::Item(value)))
+                    .collect();
+                if let Some(picker) = &mut self.state.picker {
+                    picker.set_items(items);
+                }
+            }
 
             if let Some(ref picker) = self.state.picker {
                 if picker.is_done() {
@@ -846,11 +926,14 @@ fn write_child_output_to_log(
 }
 
 type DefaultFn = Box<dyn Fn(&App) -> Option<String>>;
+type CompletionFn = Box<dyn Fn(&App, &str) -> Vec<String>>;
 
 pub(crate) struct PromptParams {
     pub prompt: &'static str,
     pub create_default_value: DefaultFn,
     pub hide_menu: bool,
+    pub complete: Option<CompletionFn>,
+    pub refresh_completions: bool,
 }
 
 impl Default for PromptParams {
@@ -859,6 +942,8 @@ impl Default for PromptParams {
             prompt: "",
             create_default_value: Box::new(|_| None),
             hide_menu: true,
+            complete: None,
+            refresh_completions: false,
         }
     }
 }

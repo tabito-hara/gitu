@@ -241,6 +241,7 @@ pub(crate) fn owner_repo_from_url(url: &str) -> Option<String> {
 #[derive(Default, Debug, Deserialize)]
 pub struct GeneralConfig {
     pub always_show_help: BoolConfigEntry,
+    pub show_repository_header: BoolConfigEntry,
     pub confirm_quit: BoolConfigEntry,
     pub refresh_on_file_change: BoolConfigEntry,
     pub confirm_discard: ConfirmDiscardOption,
@@ -561,6 +562,7 @@ pub(crate) fn init_test_config() -> Res<Config> {
         .map_err(Error::Config)?;
 
     general.always_show_help.enabled = false;
+    general.show_repository_header.enabled = false;
     general.refresh_on_file_change.enabled = false;
 
     Ok(Config {

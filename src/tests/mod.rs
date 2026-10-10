@@ -62,7 +62,7 @@ fn switch_repository() {
 
     ctx.update(
         &mut app,
-        keys(&format!("<ctrl+x>b{}<enter>", other.dir.display())),
+        keys(&format!("<ctrl+x><ctrl+f>{}<enter>", other.dir.display())),
     );
     assert_eq!(
         app.state.repo.workdir().unwrap(),
@@ -74,6 +74,244 @@ fn switch_repository() {
         app.state.repo.workdir().unwrap(),
         ctx.dir.canonicalize().unwrap()
     );
+}
+
+#[test]
+fn switch_repository_completion() {
+    let mut ctx = setup_clone!();
+    let other = ctx.dir.join("completion_repository");
+    git2::Repository::init(&other).unwrap();
+    let mut app = ctx.init_app();
+
+    ctx.update(&mut app, keys("<ctrl+x><ctrl+f>completion_r<tab><enter>"));
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        other.canonicalize().unwrap()
+    );
+
+    let original_name = ctx.dir.file_name().unwrap().to_str().unwrap();
+    ctx.update(
+        &mut app,
+        keys(&format!("<ctrl+x>b{original_name}<tab><enter>")),
+    );
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        ctx.dir.canonicalize().unwrap()
+    );
+}
+
+#[test]
+fn switch_repository_completion_picker() {
+    let mut ctx = setup_clone!();
+    let first = ctx.dir.join("completion_alpha");
+    let second = ctx.dir.join("completion_beta");
+    git2::Repository::init(&first).unwrap();
+    git2::Repository::init(&second).unwrap();
+    let mut app = ctx.init_app();
+
+    ctx.update(
+        &mut app,
+        keys("<ctrl+x><ctrl+f>comp<tab><down><enter><enter>"),
+    );
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        second.canonicalize().unwrap()
+    );
+}
+
+#[test]
+fn switch_repository_completion_picker_cancel() {
+    let mut ctx = setup_clone!();
+    git2::Repository::init(ctx.dir.join("completion_alpha")).unwrap();
+    let second = ctx.dir.join("completion_beta");
+    git2::Repository::init(&second).unwrap();
+    let mut app = ctx.init_app();
+
+    ctx.update(
+        &mut app,
+        keys("<ctrl+x><ctrl+f>comp<tab><esc>letion_beta<enter>"),
+    );
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        second.canonicalize().unwrap()
+    );
+    assert!(app.state.picker.is_none());
+    assert!(app.state.prompt.data.is_none());
+}
+
+#[test]
+fn switch_repository_home() {
+    let mut ctx = setup_clone!();
+    let other = ctx.dir.join("home_repository");
+    git2::Repository::init(&other).unwrap();
+    let mut app = ctx.init_app();
+    let home = ctx.dir.clone();
+
+    temp_env::with_var("HOME", Some(&home), || {
+        ctx.update(&mut app, keys("<ctrl+x><ctrl+f>~/home_repository<enter>"));
+        assert_eq!(
+            app.state.repo.workdir().unwrap(),
+            other.canonicalize().unwrap()
+        );
+
+        ctx.update(&mut app, keys("<ctrl+x><ctrl+f>~<enter>"));
+        assert_eq!(
+            app.state.repo.workdir().unwrap(),
+            home.canonicalize().unwrap()
+        );
+
+        ctx.update(&mut app, keys("<ctrl+x><ctrl+f>~<tab>home_r<tab><enter>"));
+        assert_eq!(
+            app.state.repo.workdir().unwrap(),
+            other.canonicalize().unwrap()
+        );
+    });
+}
+
+#[test]
+fn switch_repository_only_opened_buffers() {
+    let mut ctx = setup_clone!();
+    let first = ctx.dir.join("completion_alpha");
+    let second = ctx.dir.join("completion_beta");
+    git2::Repository::init(&first).unwrap();
+    git2::Repository::init(&second).unwrap();
+    let mut app = ctx.init_app();
+
+    ctx.update(&mut app, keys("<ctrl+x>bcompletion_<tab><enter>"));
+    ctx.update(
+        &mut app,
+        keys(&format!("<ctrl+x>b{}<enter>", second.display())),
+    );
+    assert_eq!(app.state.repo_buffers.len(), 1);
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        ctx.dir.canonicalize().unwrap()
+    );
+
+    ctx.update(&mut app, keys("<ctrl+x><ctrl+f>completion_alpha<enter>"));
+    ctx.update(
+        &mut app,
+        keys(&format!("<ctrl+x><ctrl+f>{}<enter>", second.display())),
+    );
+    ctx.update(
+        &mut app,
+        keys("<ctrl+x>bcompletion_<tab>alpha<enter><enter>"),
+    );
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        first.canonicalize().unwrap()
+    );
+    assert_eq!(app.state.repo_buffers.len(), 3);
+
+    ctx.update(&mut app, keys("<ctrl+x>b<enter>"));
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        second.canonicalize().unwrap()
+    );
+}
+
+#[test]
+fn switch_repository_absolute_path_inside_completion_picker() {
+    let mut ctx = setup_clone!();
+    let other = ctx.dir.join("completion_repository");
+    git2::Repository::init(&other).unwrap();
+    let mut app = ctx.init_app();
+
+    ctx.update(
+        &mut app,
+        keys(&format!(
+            "<ctrl+x><ctrl+f><tab>{}<enter><enter>",
+            other.display()
+        )),
+    );
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        other.canonicalize().unwrap()
+    );
+}
+
+#[test]
+fn switch_repository_home_inside_completion_picker() {
+    let mut ctx = setup_clone!();
+    let other = ctx.dir.join("home_repository");
+    git2::Repository::init(&other).unwrap();
+    let mut app = ctx.init_app();
+    let home = ctx.dir.clone();
+
+    temp_env::with_var("HOME", Some(&home), || {
+        ctx.update(
+            &mut app,
+            keys("<ctrl+x><ctrl+f><tab>~/home_repository<enter><enter>"),
+        );
+        assert_eq!(
+            app.state.repo.workdir().unwrap(),
+            other.canonicalize().unwrap()
+        );
+    });
+}
+
+#[test]
+fn repository_header() {
+    let mut ctx = setup_clone_wide!();
+    ctx.config().general.show_repository_header.enabled = true;
+    let other = ctx.dir.join("other");
+    git2::Repository::init(&other).unwrap();
+    let mut app = ctx.init_app();
+
+    let buffer = ctx.redact_buffer();
+    let header = buffer.lines().next().unwrap();
+    assert!(header.starts_with("Buffer: local  "));
+    assert!(header.contains(ctx.dir.to_str().unwrap()));
+
+    ctx.update(&mut app, keys("<ctrl+x><ctrl+f>other<enter>"));
+    let buffer = ctx.redact_buffer();
+    let header = buffer.lines().next().unwrap();
+    assert!(header.starts_with("Buffer: other  "));
+    assert!(header.contains(other.to_str().unwrap()));
+
+    ctx.update(&mut app, keys("<ctrl+x>b<enter>"));
+    assert!(
+        ctx.redact_buffer()
+            .lines()
+            .next()
+            .unwrap()
+            .starts_with("Buffer: local  ")
+    );
+}
+
+#[test]
+fn repository_header_narrow() {
+    let mut ctx = setup_clone_narrow!();
+    ctx.config().general.show_repository_header.enabled = true;
+    let mut app = ctx.init_app();
+    let buffer = ctx.redact_buffer();
+    let mut lines = buffer.lines();
+    assert!(lines.next().unwrap().starts_with("Buffer: local  "));
+    assert!(lines.next().unwrap().contains("On branch main"));
+    ctx.update(&mut app, keys("<ctrl+e>"));
+    assert!(
+        ctx.redact_buffer()
+            .lines()
+            .next()
+            .unwrap()
+            .starts_with("Buffer: local  ")
+    );
+}
+
+#[test]
+fn repository_header_mouse() {
+    let mut ctx = setup_clone!();
+    ctx.config().general.show_repository_header.enabled = true;
+    ctx.config().general.mouse_support = true;
+    let mut app = ctx.init_app();
+    let first = app.screen().get_selected_item().id;
+    ctx.update(&mut app, keys("j"));
+    let selected = app.screen().get_selected_item().id;
+    ctx.update(&mut app, vec![mouse_event(0, 1, MouseButton::Left)]);
+    assert_eq!(app.screen().get_selected_item().id, selected);
+
+    ctx.update(&mut app, vec![mouse_event(0, 2, MouseButton::Left)]);
+    assert_eq!(app.screen().get_selected_item().id, first);
 }
 
 #[test]

@@ -4,6 +4,7 @@
 
 [general]
 always_show_help.enabled = false
+show_repository_header.enabled = true
 confirm_quit.enabled = false
 # Sets initially collapsed sections in the editor. e.g.:
 # collapsed_sections = ["untracked", "recent_commits", "branch_status"]
@@ -206,6 +207,7 @@ root.clear_mark = ["ctrl+g"]
 root.search = ["/"]
 root.search_next = ["n"]
 root.search_previous = ["N"]
+root.open_repository = ["<ctrl+x>+<ctrl+f>"]
 root.switch_repository = ["<ctrl+x>+b"]
 root.switch_repository_from_list = ["<ctrl+x>+<ctrl+b>"]
 root.show_refs = ["Y"]

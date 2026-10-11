@@ -312,6 +312,52 @@ fn repository_header_mouse() {
 }
 
 #[test]
+fn close_repository_switches_to_previous_buffer() {
+    let mut ctx = setup_clone!();
+    let other = ctx.dir.join("other");
+    git2::Repository::init(&other).unwrap();
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("<ctrl+x><ctrl+f>other<enter><ctrl+x>k"));
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        ctx.dir.canonicalize().unwrap()
+    );
+    assert_eq!(
+        app.state.repo_buffers,
+        vec![ctx.dir.canonicalize().unwrap()]
+    );
+    assert!(!app.state.quit);
+}
+
+#[test]
+fn close_repository_last_buffer_returns_to_selection() {
+    let mut ctx = setup_clone!();
+    let other = ctx.dir.join("other");
+    git2::Repository::init(&other).unwrap();
+    let mut app = ctx.init_app();
+    ctx.update(
+        &mut app,
+        keys(&format!("<ctrl+x>k{}<enter>", other.display())),
+    );
+    assert_eq!(
+        app.state.repo.workdir().unwrap(),
+        other.canonicalize().unwrap()
+    );
+    assert_eq!(app.state.repo_buffers, vec![other.canonicalize().unwrap()]);
+    assert!(!app.state.quit);
+}
+
+#[test]
+fn close_repository_last_buffer_selection_cancel_exits() {
+    let mut ctx = setup_clone!();
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("<ctrl+x>k<esc>"));
+    assert!(app.state.quit);
+    assert!(app.state.repo_buffers.is_empty());
+    assert!(app.state.screens.is_empty());
+}
+
+#[test]
 fn fresh_init() {
     let mut ctx = setup_clone!();
     run(&ctx.dir, &["rm", "-rf", ".git"]);

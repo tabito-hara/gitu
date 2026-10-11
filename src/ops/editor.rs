@@ -381,6 +381,17 @@ impl OpTrait for OpenRepository {
     }
 }
 
+pub(crate) struct CloseRepository;
+impl OpTrait for CloseRepository {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, term| app.close_repository(term)))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Close repo".into()
+    }
+}
+
 pub(crate) struct SwitchRepository;
 impl OpTrait for SwitchRepository {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {

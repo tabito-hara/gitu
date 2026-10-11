@@ -245,6 +245,47 @@ impl App {
         self.state.repo_buffers.insert(0, path);
     }
 
+    pub(crate) fn close_repository(&mut self, term: &mut Term) -> Res<()> {
+        if self.state.pending_cmd.is_some() {
+            return Err(Error::CmdAlreadyRunning);
+        }
+        let current =
+            canonicalize_repo_path(self.state.repo.workdir().ok_or(Error::NoRepoWorkdir)?);
+        if let Some(next) = self
+            .state
+            .repo_buffers
+            .iter()
+            .find(|path| **path != current)
+            .cloned()
+        {
+            self.switch_repo(&next, term.size().map_err(Error::Term)?)?;
+            self.state.repo_buffers.retain(|path| *path != current);
+            return Ok(());
+        }
+
+        let base = std::env::current_dir().map_err(Error::FindGitDir)?;
+        self.state.repo_buffers.clear();
+        self.state.screens.clear();
+        self.state.file_watcher = None;
+        self.state.pending_keys.clear();
+        self.state.pending_menu = None;
+        self.state.prompt.reset();
+        self.state.picker = None;
+        self.state.search = None;
+        self.state.current_cmd_log.clear();
+        self.state.quit = true;
+
+        match crate::repository::select_repository(term, &self.state.config, &base)? {
+            Some(repo) => {
+                let path = repo.workdir().ok_or(Error::NoRepoWorkdir)?.to_path_buf();
+                self.switch_repo(&path, term.size().map_err(Error::Term)?)?;
+                self.state.quit = false;
+                Ok(())
+            }
+            None => Ok(()),
+        }
+    }
+
     pub fn handle_event(&mut self, term: &mut Term, event: Event) -> Res<()> {
         match event {
             Event::Resize(w, h) => {

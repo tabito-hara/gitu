@@ -16,6 +16,7 @@ mod menu;
 mod ops;
 pub mod picker;
 mod prompt;
+mod repository;
 mod screen;
 pub mod style;
 mod syntax_parser;
@@ -85,7 +86,19 @@ pub type Res<T> = Result<T, Error>;
 
 pub fn run(config: Arc<Config>, args: &cli::Args, term: &mut Term) -> Res<()> {
     let dir = find_git_dir()?;
-    let repo = open_repo(&dir)?;
+    let repo = match open_repo(&dir) {
+        Ok(repo) => repo,
+        Err(Error::OpenRepo(err))
+            if err.code() == git2::ErrorCode::NotFound && args.command.is_none() && !args.print =>
+        {
+            let base = std::env::current_dir().map_err(Error::FindGitDir)?;
+            let Some(repo) = repository::select_repository(term, &config, &base)? else {
+                return Ok(());
+            };
+            repo
+        }
+        Err(err) => return Err(err),
+    };
 
     let mut app = app::App::create(
         Rc::new(repo),

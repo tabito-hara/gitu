@@ -99,6 +99,28 @@ pub(crate) fn ui(term: &mut TermBackend, state: &mut State) -> Res<()> {
     Ok(())
 }
 
+pub(crate) fn repository_selection(
+    term: &mut TermBackend,
+    config: &crate::config::Config,
+    selection: &crate::picker::PickerState,
+    error: Option<&str>,
+) -> Res<()> {
+    let size = term.size().map_err(Error::Term)?;
+    let mut layout = UiTree::new();
+    layout.col(opts(), |layout| {
+        layout.col(opts().fill_xy(), |_| {});
+        if let Some(error) = error {
+            layout_line(layout, error.into(), Style::from(&config.style.error_msg));
+        }
+        picker::layout_picker(layout, selection, config, size.0 as usize);
+    });
+    let computed = layout.compute([size.0, size.1]);
+    let mut items = computed.iter().collect::<Vec<_>>();
+    items.sort_by_key(|item| [item.pos[1], item.pos[0]]);
+    clear_blanks(term, size, items)?;
+    term.flush().map_err(Error::Term)
+}
+
 fn layout_prompt<'a>(layout: &mut UiTree<'a>, state: &'a State, width: usize) {
     let Some(ref prompt_data) = state.prompt.data else {
         return;

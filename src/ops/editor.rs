@@ -4,6 +4,7 @@ use crate::{
     item_data::ItemData,
     menu::PendingMenu,
     picker::{PickerData, PickerItem, PickerState},
+    repository::{self, expand_home_path},
     screen::NavMode,
     term::Term,
 };
@@ -436,26 +437,10 @@ impl OpTrait for SwitchRepository {
 }
 
 fn resolve_switch_path(app: &App, path: String) -> PathBuf {
-    let path = expand_home_path(Path::new(&path));
-    if path.is_absolute() {
-        path
-    } else {
-        app.state
-            .repo
-            .workdir()
-            .unwrap_or_else(|| Path::new("."))
-            .join(path)
-    }
-}
-
-fn expand_home_path(path: &Path) -> PathBuf {
-    if let Ok(suffix) = path.strip_prefix("~")
-        && let Some(home) = std::env::var_os("HOME")
-    {
-        PathBuf::from(home).join(suffix)
-    } else {
-        path.to_path_buf()
-    }
+    repository::resolve_path(
+        app.state.repo.workdir().unwrap_or_else(|| Path::new(".")),
+        &path,
+    )
 }
 
 fn opened_repository_completions(app: &App, input: &str) -> Vec<String> {
@@ -475,38 +460,10 @@ fn opened_repository_completions(app: &App, input: &str) -> Vec<String> {
 }
 
 fn directory_completions(app: &App, input: &str) -> Vec<String> {
-    if input == "~" {
-        return std::env::var_os("HOME")
-            .map(|_| format!("~{}", std::path::MAIN_SEPARATOR))
-            .into_iter()
-            .collect();
-    }
-    let mut candidates = Vec::new();
-    let path = Path::new(input);
-    let (parent, prefix) = if input.is_empty() || input.ends_with(std::path::MAIN_SEPARATOR) {
-        (path, "")
-    } else {
-        (
-            path.parent().unwrap_or_else(|| Path::new("")),
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or(""),
-        )
-    };
-    let directory = resolve_switch_path(app, parent.display().to_string());
-    if let Ok(entries) = std::fs::read_dir(directory) {
-        for entry in entries.flatten() {
-            let name = entry.file_name();
-            if name.to_string_lossy().starts_with(prefix) && entry.path().is_dir() {
-                candidates.push(format!(
-                    "{}{}",
-                    parent.join(name).display(),
-                    std::path::MAIN_SEPARATOR
-                ));
-            }
-        }
-    }
-    candidates
+    repository::directory_completions(
+        app.state.repo.workdir().unwrap_or_else(|| Path::new(".")),
+        input,
+    )
 }
 
 pub(crate) struct SwitchRepositoryFromList;

@@ -90,6 +90,31 @@ pub(crate) struct PickerParams<'a> {
 }
 
 impl PickerState {
+    pub(crate) fn handle_key_event(
+        &mut self,
+        mut key: crossterm::event::KeyEvent,
+        bindings: &crate::config::PickerBindings,
+    ) {
+        use crossterm::event::{KeyEventKind, KeyModifiers};
+        if key.kind != KeyEventKind::Press {
+            return;
+        }
+        key.modifiers = key.modifiers.difference(KeyModifiers::SHIFT);
+        let combo = vec![(key.modifiers, key.code)];
+        if bindings.next.contains(&combo) {
+            self.next();
+        } else if bindings.previous.contains(&combo) {
+            self.previous();
+        } else if bindings.done.contains(&combo) {
+            self.done();
+        } else if bindings.cancel.contains(&combo) {
+            self.cancel();
+        } else {
+            self.input_state.handle_key_event(key);
+            self.update_filter();
+        }
+    }
+
     /// Create a new picker with items
     pub fn new(
         prompt: impl Into<Cow<'static, str>>,

@@ -13,6 +13,9 @@ pub(crate) struct Show;
 impl OpTrait for Show {
     fn get_action(&self, target: &ItemData) -> Option<Action> {
         match target {
+            ItemData::RebaseStep(step) => {
+                step.oid.clone().and_then(|oid| goto_show_screen(oid, None))
+            }
             ItemData::Commit { oid, .. }
             | ItemData::Reference {
                 kind: Ref::Tag(oid),

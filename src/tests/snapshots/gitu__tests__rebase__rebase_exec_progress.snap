@@ -1,0 +1,25 @@
+---
+source: src/tests/rebase.rs
+expression: ctx.redact_buffer()
+---
+▌Rebasing other-branch onto main                                                |
+▌exec   false                                                                   |
+▌pick   9d75bcc add last                                                        |
+▌stop   exec false                                                              |
+▌done   defca27 add first                                                       |
+▌onto   46c81ca add new-file                                                    |
+                                                                                |
+ Recent commits                                                                 |
+ defca27 add first                                               Author Name __ |
+ 46c81ca main add new-file                                       Author Name __ |
+ b66a0bf origin/main add initial-file                            Author Name __ |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+styles_hash: 693888c05324eec2

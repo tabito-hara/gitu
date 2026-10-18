@@ -27,37 +27,7 @@ pub(crate) mod remote;
 pub(crate) mod status;
 
 pub(crate) fn rebase_status(repo: &Repository) -> Res<Option<RebaseStatus>> {
-    let dir = repo.workdir().expect("No workdir");
-    let mut rebase_onto_file = dir.to_path_buf();
-    rebase_onto_file.push(".git/rebase-merge/onto");
-
-    let mut rebase_head_name_file = dir.to_path_buf();
-    rebase_head_name_file.push(".git/rebase-merge/head-name");
-
-    match fs::read_to_string(&rebase_onto_file) {
-        Ok(content) => {
-            let onto_hash = content.trim().to_string();
-            Ok(Some(RebaseStatus {
-                onto: branch_name_lossy(dir, &onto_hash)?
-                    .unwrap_or_else(|| onto_hash[..7].to_string()),
-                head_name: fs::read_to_string(rebase_head_name_file)
-                    .map_err(Error::ReadRebaseStatusFile)?
-                    .trim()
-                    .strip_prefix("refs/heads/")
-                    .unwrap()
-                    .to_string(),
-                // TODO include log of 'done' items
-            }))
-        }
-        Err(err) => {
-            log::warn!(
-                "Couldn't read {}, due to {}",
-                rebase_onto_file.to_string_lossy(),
-                err
-            );
-            Ok(None)
-        }
-    }
+    rebase_status::read(repo)
 }
 
 pub(crate) fn merge_status(repo: &Repository) -> Res<Option<MergeStatus>> {

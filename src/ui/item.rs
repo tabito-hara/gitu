@@ -26,6 +26,31 @@ pub(crate) fn layout_item<'a>(
     let style = &config.style;
 
     match &item.data {
+        ItemData::RebaseStep(step) => {
+            let action_style = match step.action.as_str() {
+                "stop" => &style.error_msg,
+                "done" => &style.age,
+                _ => &style.command,
+            };
+            layout_span(
+                layout,
+                (
+                    format!("{:<6} ", step.action).into(),
+                    base.patch(Style::from(action_style)),
+                ),
+            );
+            if !step.short_id.is_empty() {
+                layout_span(
+                    layout,
+                    (
+                        step.short_id.as_str().into(),
+                        base.patch(Style::from(&style.hash)),
+                    ),
+                );
+                layout_span(layout, (" ".into(), base));
+            }
+            layout_span(layout, (step.summary.as_str().into(), base));
+        }
         ItemData::Raw(content) => {
             layout_span(layout, (content.as_str().into(), base));
         }

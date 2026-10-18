@@ -3,6 +3,8 @@ source: src/tests/mod.rs
 expression: ctx.redact_buffer()
 ---
 ▌Rebasing other-branch onto main                                                |
+▌stop   2bb4d15 modify new-file                                                 |
+▌onto   ed5ed59 modify new-file                                                 |
                                                                                 |
  Unstaged changes (1)                                                           |
  unmerged   new-file…                                                           |
@@ -20,6 +22,4 @@ expression: ctx.redact_buffer()
                                                                                 |
                                                                                 |
                                                                                 |
-                                                                                |
-                                                                                |
-styles_hash: 3058cb5941064968
+styles_hash: 8bc88b93435deda1

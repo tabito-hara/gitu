@@ -1,0 +1,25 @@
+---
+source: src/tests/rebase.rs
+expression: ctx.redact_buffer()
+---
+ commit 51cb5b96395fe854f521c8e8c51130e11d24f816                                |
+ Author: Author Name <author@email.com>                                         |
+ Date:   Fri, 16 Feb 2024 11:11:00 +0100                                        |
+                                                                                |
+     add last                                                                   |
+                                                                                |
+     Commit body goes here                                                      |
+                                                                                |
+ added      last                                                                |
+▌@@ -0,0 +1 @@                                                                  |
+▌+last                                                                          |
+▌\ No newline at end of file                                                    |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+styles_hash: 8dbd9c07392023d8

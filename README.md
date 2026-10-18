@@ -17,10 +17,14 @@ Here's a list of so-far supported features:
 - **Fetching**
 - **Logging** _(current, other)_
 - **Pulling / Pushing** _to/from configured upstream/pushDefault_
-- **Rebasing** _(elsewhere, abort, continue, autosquash, interactive)_
+- **Rebasing** _(elsewhere, abort, continue, autosquash, interactive, progress display)_
 - **Resetting** _(soft, mixed, hard)_
 - **Reverting** _(commit)_
 - **Stashing** _(save, pop, apply, drop)_
+
+During a rebase, the status view shows remaining actions, the stopped commit (`stop`),
+rewritten commits (`done`), and the base commit (`onto`). Select a commit and press
+`Enter` to inspect its diff.
 
 ### Keybinds
 Keybinds try mimic Magit, while staying Vim-like.

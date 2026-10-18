@@ -58,12 +58,18 @@ pub(crate) fn create(config: Arc<Config>, repo: Rc<Repository>, size: (u16, u16)
             let untracked = untracked_list(&untracked_files);
 
             let items = if let Some(rebase) = git::rebase_status(&repo)? {
-                vec![Item {
+                let mut items = vec![Item {
                     id: hash(SectionID::RebaseStatus),
                     data: ItemData::Header(SectionHeader::Rebase(rebase.head_name, rebase.onto)),
                     ..Default::default()
-                }]
-                .into_iter()
+                }];
+                items.extend(rebase.steps.into_iter().enumerate().map(|(i, step)| Item {
+                    id: hash(("rebase_step", i, &step.oid, &step.action)),
+                    depth: 1,
+                    data: ItemData::RebaseStep(step),
+                    ..Default::default()
+                }));
+                items.into_iter()
             } else if let Some(merge) = git::merge_status(&repo)? {
                 vec![Item {
                     id: hash(SectionID::MergeStatus),

@@ -5,6 +5,7 @@ use crate::{Res, error::Error, git::diff::Diff, gitu_diff::Status, highlight::Bl
 #[derive(Clone, Debug)]
 pub(crate) enum ItemData {
     Raw(String),
+    RebaseStep(crate::git::rebase_status::RebaseStep),
     AllUnstaged(usize),
     AllStaged(usize),
     AllUntracked(Vec<PathBuf>),
@@ -98,6 +99,7 @@ impl ItemData {
 
     pub(crate) fn rev(&self) -> Option<Rev> {
         match &self {
+            ItemData::RebaseStep(step) => step.oid.clone().map(Rev::Commit),
             ItemData::Reference { kind, .. } => Some(Rev::Ref(kind.clone())),
             ItemData::Commit {
                 oid,
@@ -117,6 +119,13 @@ impl ItemData {
     pub(crate) fn display_text(&self) -> String {
         match self {
             ItemData::Raw(content) => content.clone(),
+            ItemData::RebaseStep(step) => {
+                if step.short_id.is_empty() {
+                    format!("{:<6} {}", step.action, step.summary)
+                } else {
+                    format!("{:<6} {} {}", step.action, step.short_id, step.summary)
+                }
+            }
             ItemData::AllUnstaged(count) => format!("Unstaged changes ({count})"),
             ItemData::AllStaged(count) => format!("Staged changes ({count})"),
             ItemData::AllUntracked(_) => "Untracked files".into(),

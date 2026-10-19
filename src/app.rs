@@ -358,11 +358,19 @@ impl App {
 
         self.state.pending_keys.push((key.modifiers, key.code));
 
+        let root = Menu::Root;
         let matching_bindings = self
             .state
             .config
             .bindings
             .match_bindings(&menu, &self.state.pending_keys)
+            .chain(
+                self.state
+                    .config
+                    .bindings
+                    .match_bindings(&root, &self.state.pending_keys)
+                    .filter(|binding| menu != root && matches!(binding.op, Op::Quit)),
+            )
             .collect::<Vec<_>>();
 
         match matching_bindings[..] {

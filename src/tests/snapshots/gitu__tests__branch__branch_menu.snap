@@ -22,5 +22,5 @@ expression: ctx.redact_buffer()
  s     Spinoff branch                                                           |
  k/K   Delete branch                                                            |
  m     Rename branch                                                            |
- q/esc Quit/Close                                                               |
+ q/esc Close                                                                    |
 styles_hash: e5af248fdfd5e1f4

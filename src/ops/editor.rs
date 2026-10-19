@@ -15,30 +15,34 @@ pub(crate) struct Quit;
 impl OpTrait for Quit {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {
         Some(Rc::new(|app, term| {
-            let menu = app
-                .state
-                .pending_menu
-                .as_ref()
-                .map(|pending_menu| pending_menu.menu);
-
-            if menu == root_menu(&app.state.config) {
-                if app.state.screens.len() == 1 {
-                    if app.state.config.general.confirm_quit.enabled {
-                        app.confirm(term, "Really quit? (y or n)")?;
-                    };
-
-                    app.state.quit = true;
-                } else {
-                    app.state.screens.pop();
-                }
+            if app.state.config.general.confirm_quit.enabled {
+                app.confirm(term, "Really quit? (y or n)")?;
             }
+            app.state.quit = true;
 
             Ok(())
         }))
     }
 
     fn display(&self, _state: &State) -> String {
-        "Quit/Close".into()
+        "Quit".into()
+    }
+}
+
+pub(crate) struct Close;
+impl OpTrait for Close {
+    fn get_action(&self, _target: &ItemData) -> Option<Action> {
+        Some(Rc::new(|app, _term| {
+            let menu = app.state.pending_menu.as_ref().map(|pending| pending.menu);
+            if menu == root_menu(&app.state.config) && app.state.screens.len() > 1 {
+                app.state.screens.pop();
+            }
+            Ok(())
+        }))
+    }
+
+    fn display(&self, _state: &State) -> String {
+        "Close".into()
     }
 }
 

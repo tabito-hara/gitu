@@ -21,5 +21,5 @@ expression: ctx.redact_buffer()
  p     to origin        -n Dry run (--dry-run)                                  |
  u     to origin/main   -F Force (--force)                                      |
  e     to elsewhere     -f Force with lease (--force-with-lease)                |
- q/esc Quit/Close       -h Disable hooks (--no-verify)                          |
+ q/esc Close            -h Disable hooks (--no-verify)                          |
 styles_hash: efce8527ddf6e007

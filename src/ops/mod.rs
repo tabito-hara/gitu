@@ -148,6 +148,7 @@ pub(crate) enum Op {
 
     Refresh,
     Quit,
+    Close,
     ScrollViewUp,
     ScrollViewDown,
     ScrollViewTop,
@@ -165,6 +166,7 @@ impl Op {
     pub fn implementation(self) -> Box<dyn OpTrait> {
         match self {
             Op::Quit => Box::new(editor::Quit),
+            Op::Close => Box::new(editor::Close),
             Op::OpenMenu(menu) => Box::new(editor::OpenMenu(menu)),
             Op::Refresh => Box::new(editor::Refresh),
             Op::ToggleArg(name) => Box::new(editor::ToggleArg(name)),

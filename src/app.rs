@@ -659,6 +659,9 @@ impl App {
         }
 
         self.state.prompt.set(prompt::PromptData { prompt_text });
+        if let Some(value) = &params.initial_value {
+            self.state.prompt.state.set_value(value.clone());
+        }
         let result = self.handle_prompt(term, params);
 
         self.unhide_menu();
@@ -683,6 +686,7 @@ impl App {
                     let mut candidates = complete(self, &input);
                     candidates.sort();
                     candidates.dedup();
+                    let mut selected_from_list = false;
                     let value = match candidates.len() {
                         0 => None,
                         1 => candidates.pop(),
@@ -707,14 +711,23 @@ impl App {
                             };
                             self.state.prompt.data = prompt_data;
                             match result? {
-                                Some(PickerData::Item(value)) => Some(value),
+                                Some(PickerData::Item(value)) => {
+                                    selected_from_list = true;
+                                    Some(value)
+                                }
                                 _ => None,
                             }
                         }
                     };
                     if let Some(value) = value {
+                        let submit = params.submit_completion
+                            || (selected_from_list
+                                && params
+                                    .submit_selection
+                                    .as_ref()
+                                    .is_some_and(|submit| submit(self, &value)));
                         self.state.prompt.state.set_value(value);
-                        if params.submit_completion {
+                        if submit {
                             return get_prompt_result(params, self);
                         }
                     }
@@ -952,14 +965,17 @@ fn write_child_output_to_log(
 
 type DefaultFn = Box<dyn Fn(&App) -> Option<String>>;
 type CompletionFn = Box<dyn Fn(&App, &str) -> Vec<String>>;
+type SubmitSelectionFn = Box<dyn Fn(&App, &str) -> bool>;
 
 pub(crate) struct PromptParams {
     pub prompt: &'static str,
     pub create_default_value: DefaultFn,
+    pub initial_value: Option<String>,
     pub hide_menu: bool,
     pub complete: Option<CompletionFn>,
     pub refresh_completions: bool,
     pub submit_completion: bool,
+    pub submit_selection: Option<SubmitSelectionFn>,
 }
 
 impl Default for PromptParams {
@@ -967,10 +983,12 @@ impl Default for PromptParams {
         Self {
             prompt: "",
             create_default_value: Box::new(|_| None),
+            initial_value: None,
             hide_menu: true,
             complete: None,
             refresh_completions: false,
             submit_completion: false,
+            submit_selection: None,
         }
     }
 }

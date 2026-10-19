@@ -350,18 +350,30 @@ pub(crate) struct OpenRepository;
 impl OpTrait for OpenRepository {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {
         Some(Rc::new(|app, term| {
-            let default = app
+            let initial_value = app
                 .state
                 .repo
                 .workdir()
-                .map(|path| path.display().to_string());
+                .map(|path| path.parent().unwrap_or(path))
+                .map(|path| {
+                    let path = path.display().to_string();
+                    if path.ends_with(std::path::MAIN_SEPARATOR) {
+                        path
+                    } else {
+                        format!("{path}{}", std::path::MAIN_SEPARATOR)
+                    }
+                });
             let path = app.prompt(
                 term,
                 &PromptParams {
                     prompt: "Open repository",
-                    create_default_value: Box::new(move |_| default.clone()),
+                    initial_value,
                     complete: Some(Box::new(directory_completions)),
                     refresh_completions: true,
+                    submit_selection: Some(Box::new(|app, input| {
+                        git2::Repository::open(resolve_switch_path(app, input.to_string()))
+                            .is_ok_and(|repo| repo.workdir().is_some())
+                    })),
                     ..Default::default()
                 },
             )?;

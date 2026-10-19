@@ -4,7 +4,7 @@ use crate::style::Style;
 use crate::ui::layout::{LayoutTree, opts};
 use crate::ui::{UiTree, layout_span};
 use crate::{
-    item_data::{ItemData, Ref},
+    item_data::{ItemData, Ref, SectionHeader},
     ui,
 };
 use itertools::Itertools;
@@ -118,6 +118,47 @@ impl Screen {
         self.scroll_fit_start();
     }
 
+    fn branch_header_height(&self) -> usize {
+        if self.items.first().is_some_and(|item| {
+            matches!(
+                item.data,
+                ItemData::Header(SectionHeader::OnBranch(_) | SectionHeader::NoBranch)
+            )
+        }) {
+            self.item_heights.first().copied().unwrap_or(0) as usize
+        } else {
+            0
+        }
+    }
+
+    fn pinned_header_height(&self) -> usize {
+        if self.scroll > 0 {
+            self.branch_header_height().min(self.size.1 as usize)
+        } else {
+            0
+        }
+    }
+
+    fn body_scroll(&self) -> usize {
+        self.scroll.max(self.pinned_header_height())
+    }
+
+    fn body_height(&self) -> usize {
+        (self.size.1 as usize).saturating_sub(self.pinned_header_height())
+    }
+
+    fn content_line_at(&self, screen_line: usize) -> Option<usize> {
+        if screen_line >= self.size.1 as usize {
+            return None;
+        }
+        let pinned = self.pinned_header_height();
+        Some(if screen_line < pinned {
+            screen_line
+        } else {
+            self.body_scroll() + screen_line - pinned
+        })
+    }
+
     fn scroll_fit_start(&mut self) {
         if self.line_index.is_empty() {
             return;
@@ -154,7 +195,10 @@ impl Screen {
 
         let last = BOTTOM_CONTEXT_LINES + last_item_line;
 
-        let end_line = self.size.1.saturating_sub(1) as usize;
+        // Reserve the header when fitting a selection requires scrolling.
+        let end_line = (self.size.1 as usize)
+            .saturating_sub(self.branch_header_height())
+            .saturating_sub(1);
         if last > end_line + self.scroll {
             self.scroll = last - end_line;
         }
@@ -200,12 +244,12 @@ impl Screen {
     }
 
     pub(crate) fn scroll_view_half_page_up(&mut self) {
-        let half_screen = self.size.1 as usize / 2;
+        let half_screen = self.body_height() / 2;
         self.scroll_view_up(half_screen);
     }
 
     pub(crate) fn scroll_view_half_page_down(&mut self) {
-        let half_screen = self.size.1 as usize / 2;
+        let half_screen = self.body_height() / 2;
         self.scroll_view_down(half_screen);
     }
 
@@ -456,14 +500,18 @@ impl Screen {
     }
 
     fn is_cursor_off_screen(&self) -> bool {
+        if self.pinned_header_height() > 0 && self.cursor == 0 {
+            return false;
+        }
         !self
             .item_views(self.size)
             .any(|item| item.cursor_highlighted)
     }
 
     fn move_cursor_to_screen_center(&mut self) {
-        let half_screen = self.size.1 as usize / 2;
-        let center = (self.scroll + half_screen).min(self.line_index.len().saturating_sub(1));
+        let half_screen = self.body_height() / 2;
+        let center =
+            (self.body_scroll() + half_screen).min(self.line_index.len().saturating_sub(1));
         self.cursor = self.line_index[center];
     }
 
@@ -486,7 +534,8 @@ impl Screen {
             return 0;
         }
 
-        let max_scroll = len.saturating_sub(self.size.1 as usize);
+        let height = (self.size.1 as usize).saturating_sub(self.branch_header_height());
+        let max_scroll = len.saturating_sub(height);
         let max_scroll = max_scroll.saturating_add(BOTTOM_CONTEXT_LINES);
         max_scroll.min(len.saturating_sub(1))
     }
@@ -501,7 +550,10 @@ impl Screen {
     }
 
     pub(crate) fn move_cursor_to_screen_line(&mut self, screen_line: usize) {
-        let Some(&new_cursor) = self.line_index.get(screen_line + self.scroll) else {
+        let Some(content_line) = self.content_line_at(screen_line) else {
+            return;
+        };
+        let Some(&new_cursor) = self.line_index.get(content_line) else {
             return;
         };
         if self.cursor == new_cursor {
@@ -599,7 +651,7 @@ impl Screen {
     fn move_cursor_to_item(&mut self, item_i: usize) {
         self.cursor = item_i;
 
-        let half_screen = self.size.1 as usize / 2;
+        let half_screen = self.body_height() / 2;
         let Some(line_of_item) = self.line_of_item(self.cursor) else {
             return;
         };
@@ -806,7 +858,7 @@ impl Screen {
     pub(crate) fn select_matching<F: Fn(&ItemData) -> bool>(&mut self, predicate: F) -> bool {
         if let Some(item_i) = self.find_item(|item| !item.unselectable && predicate(&item.data)) {
             self.cursor = item_i;
-            let half_screen = self.size.1 as usize / 2;
+            let half_screen = self.body_height() / 2;
             let Some(line_of_item) = self.line_of_item(self.cursor) else {
                 return false;
             };
@@ -827,7 +879,7 @@ impl Screen {
     pub(crate) fn select_last_matching<F: Fn(&ItemData) -> bool>(&mut self, predicate: F) -> bool {
         if let Some(item_i) = self.rfind_item(|item| !item.unselectable && predicate(&item.data)) {
             self.cursor = item_i;
-            let half_screen = self.size.1 as usize / 2;
+            let half_screen = self.body_height() / 2;
             let Some(line_of_item) = self.line_of_item(self.cursor) else {
                 return false;
             };
@@ -859,7 +911,10 @@ impl Screen {
     }
 
     pub(crate) fn is_valid_screen_line(&self, screen_line: usize) -> bool {
-        let Some(target_item_i) = self.line_of_item(screen_line + self.scroll) else {
+        let Some(content_line) = self.content_line_at(screen_line) else {
+            return false;
+        };
+        let Some(&target_item_i) = self.line_index.get(content_line) else {
             return false;
         };
         self.nav_filter(target_item_i, NavMode::IncludeSubLines)
@@ -878,12 +933,13 @@ impl Screen {
             .map(|mark| mark.min(self.cursor)..=mark.max(self.cursor));
         let first_visible_item = self
             .line_index
-            .get(self.scroll)
+            .get(self.body_scroll())
             .cloned()
             .unwrap_or(self.items.len().saturating_sub(1));
 
         let scan_start_item = first_visible_item.min(self.cursor);
-        let scan_end_line = (self.scroll + area.1 as usize).min(self.line_index.len());
+        let body_height = (area.1 as usize).saturating_sub(self.pinned_header_height());
+        let scan_end_line = (self.body_scroll() + body_height).min(self.line_index.len());
         let scan_end_item = self
             .line_index
             .get(scan_end_line)
@@ -1000,6 +1056,19 @@ fn delta_path(diff: &Diff, file_i: usize) -> PathBuf {
 
 pub(crate) fn layout_screen<'a>(layout: &mut UiTree<'a>, screen: &'a Screen, hide_cursor: bool) {
     layout.col(opts().fill_x(), |layout| {
+        if screen.pinned_header_height() > 0 {
+            layout_item(
+                layout,
+                screen,
+                hide_cursor,
+                ItemView {
+                    item_index: 0,
+                    cursor_highlighted: screen.cursor == 0,
+                    delete_marked_branch: false,
+                    marked: screen.mark.is_some_and(|mark| mark.min(screen.cursor) == 0),
+                },
+            );
+        }
         for view in screen.item_views(screen.size) {
             layout_item(layout, screen, hide_cursor, view);
         }
@@ -1105,6 +1174,72 @@ mod tests {
             }),
         )
         .unwrap()
+    }
+
+    fn branch_screen(size: (u16, u16)) -> Screen {
+        let mut screen = screen_of(30, size);
+        screen.items[0].data = ItemData::Header(SectionHeader::OnBranch("main".into()));
+        screen.update_indices().unwrap();
+        screen
+    }
+
+    #[test]
+    fn branch_header_stays_above_scrolled_content() {
+        let mut screen = branch_screen((80, 10));
+        screen.scroll_view_down(5);
+
+        let mut layout = UiTree::new();
+        layout_screen(&mut layout, &screen, false);
+        let computed = layout.compute([80, 10]);
+        let leaves = computed
+            .iter()
+            .filter_map(|item| match item.data {
+                ui::layout::Payload::Leaf(span) => Some((item.pos[1], span.0.to_string())),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(leaves.iter().any(|(y, text)| *y == 0 && text == "main"));
+        assert!(leaves.iter().any(|(y, text)| *y == 1 && text == "5"));
+        assert_eq!(screen.content_line_at(1), Some(5));
+        assert_eq!(screen.content_line_at(9), Some(13));
+        assert_eq!(screen.content_line_at(10), None);
+
+        screen.move_cursor_to_screen_line(1);
+        assert_eq!(screen.cursor, 5);
+        assert_eq!(screen.scroll, 5);
+        screen.move_cursor_to_screen_line(0);
+        assert_eq!(screen.cursor, 0);
+        assert_eq!(screen.scroll, 0);
+    }
+
+    #[test]
+    fn branch_header_reserves_space_for_keyboard_navigation_and_bottom_scroll() {
+        let mut screen = branch_screen((80, 10));
+        screen.move_cursor_to_bottom();
+        assert!(
+            screen
+                .item_views(screen.size)
+                .any(|view| view.item_index == 29)
+        );
+        screen.scroll_view_bottom();
+        assert_eq!(screen.scroll, 23);
+        screen.scroll_view_top();
+        assert_eq!(screen.pinned_header_height(), 0);
+        assert_eq!(screen.content_line_at(1), Some(1));
+    }
+
+    #[test]
+    fn branch_header_handles_wrapping_and_small_terminals() {
+        let mut screen = branch_screen((12, 5));
+        let header_height = screen.branch_header_height();
+        assert!(header_height > 1);
+        screen.scroll_view_down(1);
+        assert_eq!(screen.content_line_at(0), Some(0));
+        assert_eq!(screen.content_line_at(header_height), Some(header_height));
+        screen.resize(12, 1).unwrap();
+        screen.scroll_view_bottom();
+        assert_eq!(screen.body_height(), 0);
+        assert_eq!(screen.content_line_at(1), None);
     }
 
     /// Scrolling is allowed a couple of lines past the content, so on a screen

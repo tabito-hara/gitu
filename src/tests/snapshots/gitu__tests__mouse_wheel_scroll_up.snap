@@ -2,6 +2,8 @@
 source: src/tests/mod.rs
 expression: ctx.redact_buffer()
 ---
+▌On branch main                                                                 |
+ modified   file13…                                                             |
  modified   file14…                                                             |
  modified   file15…                                                             |
  modified   file16…                                                             |
@@ -20,6 +22,4 @@ expression: ctx.redact_buffer()
  modified   file29…                                                             |
  modified   file30…                                                             |
                                                                                 |
- Recent commits                                                                 |
- ae744cc main add file30                                         Author Name __ |
-styles_hash: 4f2f62ac350724c1
+styles_hash: f7a8977f94c8c11a

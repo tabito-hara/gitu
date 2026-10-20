@@ -356,6 +356,21 @@ impl App {
             Some(menu) => menu.menu,
         };
 
+        // A close key cancels an unfinished key sequence without closing the
+        // view underneath it.
+        if !self.state.pending_keys.is_empty()
+            && self
+                .state
+                .config
+                .bindings
+                .match_bindings(&menu, &[(key.modifiers, key.code)])
+                .any(|binding| binding.keys.len() == 1 && matches!(binding.op, Op::Close))
+        {
+            self.state.pending_keys.clear();
+            self.close_menu();
+            return Ok(());
+        }
+
         self.state.pending_keys.push((key.modifiers, key.code));
 
         let root = Menu::Root;

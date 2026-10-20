@@ -92,3 +92,39 @@ fn quit_while_menu_is_open() {
     ctx.update(&mut app, keys(QUIT));
     assert!(app.state.quit);
 }
+
+#[test]
+fn close_keys_cancel_pending_sequence_before_returning_to_previous_view() {
+    let mut ctx = setup_clone!();
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("ll"));
+
+    for cancel in ["q", "<esc>"] {
+        ctx.update(&mut app, keys("<ctrl+x>"));
+        assert!(!app.state.pending_keys.is_empty());
+        ctx.update(&mut app, keys(cancel));
+        assert!(app.state.pending_keys.is_empty());
+        assert_eq!(app.state.screens.len(), 2);
+        assert!(!app.state.quit);
+    }
+
+    ctx.update(&mut app, keys("<esc>"));
+    assert_eq!(app.state.screens.len(), 1);
+    assert!(!app.state.quit);
+}
+
+#[test]
+fn escape_cancels_prompt_and_picker_without_closing_view() {
+    let mut ctx = setup_clone!();
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("ll"));
+
+    for operation in ["/unfinished<esc>", "bb<esc>", "<ctrl+x><ctrl+f><esc>"] {
+        ctx.update(&mut app, keys(operation));
+        assert!(app.state.prompt.data.is_none());
+        assert!(app.state.picker.is_none());
+        assert!(app.state.pending_menu.is_none());
+        assert_eq!(app.state.screens.len(), 2);
+        assert!(!app.state.quit);
+    }
+}

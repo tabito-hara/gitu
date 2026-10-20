@@ -128,3 +128,38 @@ fn escape_cancels_prompt_and_picker_without_closing_view() {
         assert!(!app.state.quit);
     }
 }
+
+#[test]
+fn legacy_quit_bindings_close_views_and_keep_explicit_quit() {
+    let mut ctx = setup_clone!();
+    let config_dir = temp_dir::TempDir::new().unwrap();
+    let config_path = config_dir.path().join("config.toml");
+    fs::write(
+        &config_path,
+        r#"[bindings]
+root.quit = ["q", "esc"]
+help_menu.quit = ["q", "h", "?", "esc"]
+branch_menu.quit = ["q", "esc"]
+log_menu.quit = ["q", "esc"]
+"#,
+    )
+    .unwrap();
+    ctx.config().bindings = crate::config::init_config(Some(config_path))
+        .unwrap()
+        .bindings;
+    let mut app = ctx.init_app();
+
+    for close in ["q", "<esc>"] {
+        ctx.update(&mut app, keys("ll"));
+        assert_eq!(app.state.screens.len(), 2);
+        ctx.update(&mut app, keys(close));
+        assert_eq!(app.state.screens.len(), 1);
+        assert!(!app.state.quit);
+    }
+    ctx.update(&mut app, keys("llbq"));
+    assert!(app.state.pending_menu.is_none());
+    assert_eq!(app.state.screens.len(), 2);
+    assert!(!app.state.quit);
+    ctx.update(&mut app, keys(QUIT));
+    assert!(app.state.quit);
+}

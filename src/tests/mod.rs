@@ -898,7 +898,51 @@ fn cycle_all_sections_to_headings() {
     fs::write(ctx.dir.join("file-one"), "blahonga\n").unwrap();
     fs::write(ctx.dir.join("file-two"), "blahonga\n").unwrap();
 
-    snapshot!(ctx, &format!("{COLLAPSE_ALL}{COLLAPSE_ALL}{COLLAPSE_ALL}"));
+    snapshot!(ctx, &COLLAPSE_ALL.repeat(4));
+}
+
+#[test]
+fn cycle_all_sections_to_file_names() {
+    let mut ctx = setup_clone!();
+    commit(&ctx.dir, "file-one", "asdf\nblahonga\n");
+    commit(&ctx.dir, "file-two", "FOO\nBAR\n");
+    fs::write(ctx.dir.join("file-one"), "blahonga\n").unwrap();
+    fs::write(ctx.dir.join("file-two"), "blahonga\n").unwrap();
+
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys(&COLLAPSE_ALL.repeat(3)));
+    insta::assert_snapshot!(ctx.redact_buffer());
+    assert!(!ctx.redact_buffer().contains("@@"));
+
+    assert!(
+        app.screen_mut()
+            .select_matching(|data| { matches!(data, crate::item_data::ItemData::Delta { .. }) })
+    );
+    ctx.update(&mut app, keys("<tab>"));
+    assert!(ctx.redact_buffer().contains("@@"));
+}
+
+#[test]
+fn cycle_all_sections_in_commit_diff() {
+    let mut ctx = setup_clone!();
+    commit(&ctx.dir, "file-one", "cycle diff content\n");
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("ll<enter>"));
+    assert!(ctx.redact_buffer().contains("+cycle diff content"));
+
+    ctx.update(&mut app, keys(&COLLAPSE_ALL.repeat(2)));
+    let files = ctx.redact_buffer();
+    assert!(files.contains("file-one"));
+    assert!(!files.contains("@@"));
+    assert!(!files.contains("+cycle diff content"));
+
+    ctx.update(&mut app, keys(COLLAPSE_ALL));
+    let headings = ctx.redact_buffer();
+    assert!(headings.contains("@@"));
+    assert!(!headings.contains("+cycle diff content"));
+
+    ctx.update(&mut app, keys(COLLAPSE_ALL));
+    assert!(ctx.redact_buffer().contains("+cycle diff content"));
 }
 
 #[test]
@@ -909,10 +953,7 @@ fn cycle_all_sections_from_headings_to_expanded() {
     fs::write(ctx.dir.join("file-one"), "blahonga\n").unwrap();
     fs::write(ctx.dir.join("file-two"), "blahonga\n").unwrap();
 
-    snapshot!(
-        ctx,
-        &format!("{COLLAPSE_ALL}{COLLAPSE_ALL}{COLLAPSE_ALL}{COLLAPSE_ALL}")
-    );
+    snapshot!(ctx, &COLLAPSE_ALL.repeat(5));
 }
 
 #[test]

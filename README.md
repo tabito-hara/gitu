@@ -31,6 +31,9 @@ Keybinds try mimic Magit, while staying Vim-like.
 Press `C-x C-c` (Ctrl+x, then Ctrl+c) to quit without confirmation. `q` and `Esc`
 close menus or return from a log or diff view. From the status view, they ask for
 confirmation before quitting; press `y` to quit or `n` / `Esc` to cancel.
+
+`Shift-Tab` cycles through expanded content, collapsed sections, file names only,
+hunk headings, and expanded content again.
 A help-menu can be shown by pressing the `h` key, or by configuring `general.always_show_help.enabled = true`
 
 

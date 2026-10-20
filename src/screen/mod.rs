@@ -52,6 +52,7 @@ pub(crate) struct Screen {
     unique_line_index: BTreeMap<usize, usize>,
     item_heights: Vec<u16>,
     collapsed: HashSet<u64>,
+    file_names_only: bool,
 }
 
 impl Screen {
@@ -82,6 +83,7 @@ impl Screen {
             unique_line_index: BTreeMap::new(),
             item_heights: vec![],
             collapsed,
+            file_names_only: false,
         };
 
         screen.refresh()?;
@@ -276,6 +278,7 @@ impl Screen {
     }
 
     pub(crate) fn toggle_section(&mut self) -> Res<()> {
+        self.file_names_only = false;
         let selected = &self.items[self.cursor];
 
         if selected.data.is_section() {
@@ -299,14 +302,29 @@ impl Screen {
             .map(|(item_i, _)| item_i)
             .collect::<Vec<_>>();
 
-        if top_level_sections
+        if self.file_names_only {
+            self.file_names_only = false;
+            self.show_section_headings();
+        } else if top_level_sections
             .iter()
             .any(|&item_i| self.is_collapsed(&self.items[item_i]))
             && top_level_sections
                 .iter()
                 .any(|&item_i| self.has_child_section(item_i))
         {
-            self.show_section_headings();
+            if self.items.iter().enumerate().any(|(item_i, item)| {
+                matches!(item.data, ItemData::Delta { .. }) && self.has_child_section(item_i)
+            }) {
+                self.collapsed = self
+                    .items
+                    .iter()
+                    .filter(|item| matches!(item.data, ItemData::Delta { .. }))
+                    .map(|item| item.id)
+                    .collect();
+                self.file_names_only = true;
+            } else {
+                self.show_section_headings();
+            }
         } else if top_level_sections
             .iter()
             .any(|&item_i| self.has_collapsed_section_in_subtree(item_i))

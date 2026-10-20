@@ -17,7 +17,7 @@ pub(crate) fn confirm_quit_prompt() {
     let mut ctx = setup_clone!();
     ctx.config().general.confirm_quit.enabled = true;
 
-    let app = snapshot!(ctx, QUIT);
+    let app = snapshot!(ctx, "q");
     assert!(!app.state.quit);
 }
 
@@ -26,17 +26,48 @@ pub(crate) fn confirm_quit() {
     let mut ctx = setup_clone!();
     ctx.config().general.confirm_quit.enabled = true;
 
-    let app = snapshot!(ctx, &format!("{QUIT}y"));
+    let app = snapshot!(ctx, "qy");
     assert!(app.state.quit);
 }
 
 #[test]
-fn q_and_escape_do_not_quit_status() {
+fn q_and_escape_cancel_exit_confirmation() {
     let mut ctx = setup_clone!();
     let mut app = ctx.init_app();
-    ctx.update(&mut app, keys("q<esc>"));
+    for close in ["q", "<esc>"] {
+        ctx.update(&mut app, keys(&format!("{close}n")));
+        assert!(!app.state.quit);
+        assert!(app.state.prompt.data.is_none());
+        assert_eq!(app.state.screens.len(), 1);
+    }
+}
+
+#[test]
+fn escape_quits_after_confirmation() {
+    let mut ctx = setup_clone!();
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("<esc>y"));
+    assert!(app.state.quit);
+}
+
+#[test]
+fn escape_dismisses_exit_confirmation_before_next_operation() {
+    let mut ctx = setup_clone!();
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys("q<esc>ll"));
     assert!(!app.state.quit);
-    assert_eq!(app.state.screens.len(), 1);
+    assert!(app.state.prompt.data.is_none());
+    assert_eq!(app.state.screens.len(), 2);
+}
+
+#[test]
+fn explicit_quit_skips_confirmation_even_when_legacy_setting_is_enabled() {
+    let mut ctx = setup_clone!();
+    ctx.config().general.confirm_quit.enabled = true;
+    let mut app = ctx.init_app();
+    ctx.update(&mut app, keys(QUIT));
+    assert!(app.state.quit);
+    assert!(app.state.prompt.data.is_none());
 }
 
 #[test]

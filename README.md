@@ -28,8 +28,9 @@ rewritten commits (`done`), and the base commit (`onto`). Select a commit and pr
 
 ### Keybinds
 Keybinds try mimic Magit, while staying Vim-like.
-Press `C-x C-c` (Ctrl+x, then Ctrl+c) to quit. `q` and `Esc` close menus or return
-from a log or diff view; they do not quit from the status view.
+Press `C-x C-c` (Ctrl+x, then Ctrl+c) to quit without confirmation. `q` and `Esc`
+close menus or return from a log or diff view. From the status view, they ask for
+confirmation before quitting; press `y` to quit or `n` / `Esc` to cancel.
 A help-menu can be shown by pressing the `h` key, or by configuring `general.always_show_help.enabled = true`
 
 

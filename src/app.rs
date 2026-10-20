@@ -790,6 +790,10 @@ impl App {
             let event = term.read_event()?;
             self.handle_event(term, event)?;
 
+            if self.state.prompt.state.status != text_input::Status::Pending {
+                return Err(Error::PromptAborted);
+            }
+
             match self.state.prompt.state.value.as_str() {
                 "y" => {
                     return Ok(());

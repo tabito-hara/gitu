@@ -14,10 +14,7 @@ use std::rc::Rc;
 pub(crate) struct Quit;
 impl OpTrait for Quit {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {
-        Some(Rc::new(|app, term| {
-            if app.state.config.general.confirm_quit.enabled {
-                app.confirm(term, "Really quit? (y or n)")?;
-            }
+        Some(Rc::new(|app, _term| {
             app.state.quit = true;
 
             Ok(())
@@ -32,10 +29,15 @@ impl OpTrait for Quit {
 pub(crate) struct Close;
 impl OpTrait for Close {
     fn get_action(&self, _target: &ItemData) -> Option<Action> {
-        Some(Rc::new(|app, _term| {
+        Some(Rc::new(|app, term| {
             let menu = app.state.pending_menu.as_ref().map(|pending| pending.menu);
-            if menu == root_menu(&app.state.config) && app.state.screens.len() > 1 {
-                app.state.screens.pop();
+            if menu == root_menu(&app.state.config) {
+                if app.state.screens.len() > 1 {
+                    app.state.screens.pop();
+                } else {
+                    app.confirm(term, "Really quit? (y or n)")?;
+                    app.state.quit = true;
+                }
             }
             Ok(())
         }))

@@ -5,6 +5,7 @@
 [general]
 always_show_help.enabled = false
 show_repository_header.enabled = true
+# Legacy setting; q/Esc always confirm quitting and Ctrl+x Ctrl+c never does.
 confirm_quit.enabled = false
 # Sets initially collapsed sections in the editor. e.g.:
 # collapsed_sections = ["untracked", "recent_commits", "branch_status"]
